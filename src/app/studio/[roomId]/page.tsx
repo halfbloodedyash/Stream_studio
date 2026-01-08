@@ -39,11 +39,15 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToastStore } from "@/stores/toastStore";
 import { apiClient } from "@/lib/api/client";
 import { VideoCompositor } from "@/lib/canvas/VideoCompositor";
+import { useSignaling } from "@/hooks/useSignaling";
 
 import { PollsManager } from "@/components/studio/PollsManager";
 import { BannersManager } from "@/components/studio/BannersManager";
 import { SettingsModal } from "@/components/studio/SettingsModal";
 import { CreateSceneModal } from "@/components/studio/CreateSceneModal";
+import { ChatPanel } from "@/components/studio/ChatPanel";
+import { DestinationsPanel, Destination } from "@/components/destinations";
+import { GuestNotifications } from "@/components/studio/GuestNotifications";
 
 type TabType = "guests" | "scenes" | "comments" | "brand" | "banners" | "interactions";
 
@@ -61,6 +65,14 @@ export default function StudioPage() {
     const [activeRightTab, setActiveRightTab] = useState<"comments" | "destinations">("comments");
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isCreateSceneOpen, setIsCreateSceneOpen] = useState(false);
+    const [destinations, setDestinations] = useState<Destination[]>([]);
+
+    // Connect to signaling server as host
+    const signaling = useSignaling({
+        roomId,
+        userName: user?.email || "Host",
+        isHost: true,
+    });
 
     // Protect the route - redirect to login if not authenticated
     useEffect(() => {
@@ -417,6 +429,33 @@ export default function StudioPage() {
         }
     };
 
+    // Destination handlers
+    const handleToggleDestination = (id: string) => {
+        setDestinations(prev =>
+            prev.map(d => d.id === id ? { ...d, enabled: !d.enabled } : d)
+        );
+    };
+
+    const handleEditDestination = (id: string) => {
+        // For now, just show a toast - full edit modal could be added later
+        addToast("Edit destination feature coming soon", "info");
+    };
+
+    const handleRemoveDestination = (id: string) => {
+        setDestinations(prev => prev.filter(d => d.id !== id));
+        addToast("Destination removed", "success");
+    };
+
+    const handleAddDestination = (destination: Omit<Destination, "id" | "status" | "stats">) => {
+        const newDestination: Destination = {
+            ...destination,
+            id: `dest-${Date.now()}`,
+            status: "idle",
+        };
+        setDestinations(prev => [...prev, newDestination]);
+        addToast(`${destination.name} destination added`, "success");
+    };
+
     // Keyboard shortcuts
     useEffect(() => {
         const handleKeyPress = (e: KeyboardEvent) => {
@@ -514,6 +553,13 @@ export default function StudioPage() {
 
     return (
         <div className={styles.studioContainer}>
+            {/* Guest Notifications */}
+            <GuestNotifications
+                waitingGuests={signaling.waitingGuests}
+                onAdmit={signaling.admitGuest}
+                onReject={signaling.removeGuest}
+            />
+
             {/* Header */}
             <header className={styles.studioHeader}>
                 <div className={styles.headerLeft}>
@@ -782,38 +828,18 @@ export default function StudioPage() {
 
                     <div className={styles.sidebarContent}>
                         {activeRightTab === "comments" && (
-                            <div className={styles.emptyState}>
-                                <MessageSquare size={48} />
-                                <h4>No Comments Yet</h4>
-                                <p>Comments from your stream destinations will appear here.</p>
-                            </div>
+                            <ChatPanel />
                         )}
 
                         {activeRightTab === "destinations" && (
-                            <div>
-                                <div style={{ padding: "var(--space-3)", borderBottom: "1px solid var(--color-border-subtle)" }}>
-                                    <button
-                                        style={{
-                                            width: "100%",
-                                            padding: "var(--space-2) var(--space-3)",
-                                            background: "var(--color-accent-primary)",
-                                            border: "none",
-                                            borderRadius: "var(--radius-md)",
-                                            color: "var(--color-bg-primary)",
-                                            fontWeight: "var(--font-medium)",
-                                            cursor: "pointer",
-                                            fontSize: "var(--text-sm)"
-                                        }}
-                                    >
-                                        + Add Destination
-                                    </button>
-                                </div>
-                                <div className={styles.emptyState}>
-                                    <Radio size={48} />
-                                    <h4>No Destinations</h4>
-                                    <p>Add streaming platforms like YouTube, Twitch, or Facebook.</p>
-                                </div>
-                            </div>
+                            <DestinationsPanel
+                                destinations={destinations}
+                                isLive={isLive}
+                                onToggle={handleToggleDestination}
+                                onEdit={handleEditDestination}
+                                onRemove={handleRemoveDestination}
+                                onAdd={handleAddDestination}
+                            />
                         )}
                     </div>
                 </aside>

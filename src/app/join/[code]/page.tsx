@@ -1,100 +1,115 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
 import {
-    Video,
-    VideoOff,
-    Mic,
-    MicOff,
-    Check,
-    AlertCircle,
-    RefreshCw,
+  Video,
+  VideoOff,
+  Mic,
+  MicOff,
+  Check,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
+import { useSignaling } from "@/hooks/useSignaling";
 
 export default function JoinPage() {
-    const params = useParams();
-    const searchParams = useSearchParams();
-    const code = params.code as string;
-    const guestName = searchParams.get("name") || "Guest";
+  const params = useParams();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const code = params.code as string;
+  const guestName = searchParams.get("name") || "Guest";
 
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const [stream, setStream] = useState<MediaStream | null>(null);
-    const [isVideoEnabled, setIsVideoEnabled] = useState(true);
-    const [isAudioEnabled, setIsAudioEnabled] = useState(true);
-    const [isReady, setIsReady] = useState(false);
-    const [isWaiting, setIsWaiting] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [roomStatus, setRoomStatus] = useState<"loading" | "valid" | "invalid">(
-        "loading"
-    );
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [isVideoEnabled, setIsVideoEnabled] = useState(true);
+  const [isAudioEnabled, setIsAudioEnabled] = useState(true);
+  const [isReady, setIsReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [roomStatus, setRoomStatus] = useState<"loading" | "valid" | "invalid">(
+    "loading"
+  );
+  const [wasRemoved, setWasRemoved] = useState(false);
 
-    // Initialize media
-    useEffect(() => {
-        initializeMedia();
-        checkRoom();
+  // Connect to signaling server
+  const signaling = useSignaling({
+    roomId: code,
+    userName: guestName,
+    isHost: false,
+    onAdmitted: () => {
+      // Redirect to studio when admitted
+      router.push(`/studio/${code}?guest=true&name=${encodeURIComponent(guestName)}`);
+    },
+    onRemoved: (reason) => {
+      setWasRemoved(true);
+      setError(reason);
+    },
+  });
 
-        return () => {
-            if (stream) {
-                stream.getTracks().forEach((track) => track.stop());
-            }
-        };
-    }, []);
+  // Initialize media
+  useEffect(() => {
+    initializeMedia();
+    checkRoom();
 
-    const checkRoom = async () => {
-        // In a real app, this would verify the room code with the backend
-        // For demo, we'll just simulate a valid room
-        setTimeout(() => {
-            setRoomStatus("valid");
-        }, 1000);
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
     };
+  }, []);
 
-    const initializeMedia = async () => {
-        try {
-            const mediaStream = await navigator.mediaDevices.getUserMedia({
-                video: { width: { ideal: 1280 }, height: { ideal: 720 } },
-                audio: { echoCancellation: true, noiseSuppression: true },
-            });
-            setStream(mediaStream);
+  const checkRoom = async () => {
+    // In a real app, this would verify the room code with the backend
+    // For demo, we'll just simulate a valid room
+    setTimeout(() => {
+      setRoomStatus("valid");
+    }, 1000);
+  };
 
-            if (videoRef.current) {
-                videoRef.current.srcObject = mediaStream;
-            }
-            setError(null);
-        } catch (err: any) {
-            setError(err.message || "Could not access camera/microphone");
-        }
-    };
+  const initializeMedia = async () => {
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: { echoCancellation: true, noiseSuppression: true },
+      });
+      setStream(mediaStream);
 
-    const toggleVideo = () => {
-        if (stream) {
-            stream.getVideoTracks().forEach((track) => {
-                track.enabled = !track.enabled;
-            });
-            setIsVideoEnabled(!isVideoEnabled);
-        }
-    };
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+      }
+      setError(null);
+    } catch (err: any) {
+      setError(err.message || "Could not access camera/microphone");
+    }
+  };
 
-    const toggleAudio = () => {
-        if (stream) {
-            stream.getAudioTracks().forEach((track) => {
-                track.enabled = !track.enabled;
-            });
-            setIsAudioEnabled(!isAudioEnabled);
-        }
-    };
+  const toggleVideo = () => {
+    if (stream) {
+      stream.getVideoTracks().forEach((track) => {
+        track.enabled = !track.enabled;
+      });
+      setIsVideoEnabled(!isVideoEnabled);
+    }
+  };
 
-    const handleJoin = () => {
-        setIsReady(true);
-        setIsWaiting(true);
-        // In a real app, this would connect to the signaling server
-        // and wait for the host to admit the guest
-    };
+  const toggleAudio = () => {
+    if (stream) {
+      stream.getAudioTracks().forEach((track) => {
+        track.enabled = !track.enabled;
+      });
+      setIsAudioEnabled(!isAudioEnabled);
+    }
+  };
 
-    if (roomStatus === "loading") {
-        return (
-            <div className="join-container">
-                <style jsx>{`
+  const handleJoin = () => {
+    setIsReady(true);
+    // Signaling hook already connected and waiting for admission
+  };
+
+  if (roomStatus === "loading") {
+    return (
+      <div className="join-container">
+        <style jsx>{`
           .join-container {
             display: flex;
             align-items: center;
@@ -114,15 +129,15 @@ export default function JoinPage() {
             to { transform: rotate(360deg); }
           }
         `}</style>
-                <div className="loading-spinner" />
-            </div>
-        );
-    }
+        <div className="loading-spinner" />
+      </div>
+    );
+  }
 
-    if (roomStatus === "invalid") {
-        return (
-            <div className="join-container">
-                <style jsx>{`
+  if (roomStatus === "invalid") {
+    return (
+      <div className="join-container">
+        <style jsx>{`
           .join-container {
             display: flex;
             flex-direction: column;
@@ -146,16 +161,16 @@ export default function JoinPage() {
             color: var(--color-text-secondary);
           }
         `}</style>
-                <AlertCircle size={64} className="error-icon" />
-                <h1>Room Not Found</h1>
-                <p>This room doesn't exist or the invitation has expired.</p>
-            </div>
-        );
-    }
+        <AlertCircle size={64} className="error-icon" />
+        <h1>Room Not Found</h1>
+        <p>This room doesn't exist or the invitation has expired.</p>
+      </div>
+    );
+  }
 
-    return (
-        <div className="join-page">
-            <style jsx>{`
+  return (
+    <div className="join-page">
+      <style jsx>{`
         .join-page {
           display: flex;
           align-items: center;
@@ -347,71 +362,71 @@ export default function JoinPage() {
         }
       `}</style>
 
-            <div className="join-card">
-                <div className="card-header">
-                    <h1>Join Broadcast</h1>
-                    <p>Room: {code}</p>
-                </div>
-
-                <div className="preview-section">
-                    {error && (
-                        <div className="error-banner">
-                            <AlertCircle size={16} />
-                            {error}
-                            <button className="retry-btn" onClick={initializeMedia}>
-                                <RefreshCw size={16} />
-                            </button>
-                        </div>
-                    )}
-
-                    <div className="video-preview">
-                        {isVideoEnabled && stream ? (
-                            <video ref={videoRef} autoPlay playsInline muted />
-                        ) : (
-                            <div className="video-off-state">
-                                <VideoOff size={48} />
-                                <span>Camera Off</span>
-                            </div>
-                        )}
-                        <span className="name-label">{guestName}</span>
-                    </div>
-
-                    <div className="controls">
-                        <button
-                            className={`control-btn ${!isAudioEnabled ? "off" : ""}`}
-                            onClick={toggleAudio}
-                        >
-                            {isAudioEnabled ? <Mic size={24} /> : <MicOff size={24} />}
-                        </button>
-                        <button
-                            className={`control-btn ${!isVideoEnabled ? "off" : ""}`}
-                            onClick={toggleVideo}
-                        >
-                            {isVideoEnabled ? <Video size={24} /> : <VideoOff size={24} />}
-                        </button>
-                    </div>
-                </div>
-
-                <div className="card-footer">
-                    {isWaiting ? (
-                        <div className="waiting-state">
-                            <div className="waiting-spinner" />
-                            <span className="waiting-text">
-                                Waiting for the host to let you in...
-                            </span>
-                        </div>
-                    ) : (
-                        <button
-                            className="join-btn"
-                            onClick={handleJoin}
-                            disabled={!stream || !!error}
-                        >
-                            <Check size={20} />
-                            Join Now
-                        </button>
-                    )}
-                </div>
-            </div>
+      <div className="join-card">
+        <div className="card-header">
+          <h1>Join Broadcast</h1>
+          <p>Room: {code}</p>
         </div>
-    );
+
+        <div className="preview-section">
+          {error && (
+            <div className="error-banner">
+              <AlertCircle size={16} />
+              {error}
+              <button className="retry-btn" onClick={initializeMedia}>
+                <RefreshCw size={16} />
+              </button>
+            </div>
+          )}
+
+          <div className="video-preview">
+            {isVideoEnabled && stream ? (
+              <video ref={videoRef} autoPlay playsInline muted />
+            ) : (
+              <div className="video-off-state">
+                <VideoOff size={48} />
+                <span>Camera Off</span>
+              </div>
+            )}
+            <span className="name-label">{guestName}</span>
+          </div>
+
+          <div className="controls">
+            <button
+              className={`control-btn ${!isAudioEnabled ? "off" : ""}`}
+              onClick={toggleAudio}
+            >
+              {isAudioEnabled ? <Mic size={24} /> : <MicOff size={24} />}
+            </button>
+            <button
+              className={`control-btn ${!isVideoEnabled ? "off" : ""}`}
+              onClick={toggleVideo}
+            >
+              {isVideoEnabled ? <Video size={24} /> : <VideoOff size={24} />}
+            </button>
+          </div>
+        </div>
+
+        <div className="card-footer">
+          {signaling.isWaiting ? (
+            <div className="waiting-state">
+              <div className="waiting-spinner" />
+              <span className="waiting-text">
+                Waiting for the host to let you in...
+              </span>
+            </div>
+          ) : (
+            <button
+              className="join-btn"
+              onClick={handleJoin}
+              disabled={!stream || !!error}
+            >
+              <Check size={20} />
+              Join Now
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
