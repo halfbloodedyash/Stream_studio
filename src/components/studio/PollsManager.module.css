@@ -1,0 +1,214 @@
+.container {
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    color: var(--color-text-primary);
+    margin: 0;
+}
+
+.addBtn {
+    padding: var(--space-1) var(--space-2);
+    background: var(--color-accent-primary);
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--color-bg-primary);
+    font-size: var(--text-xs);
+    font-weight: var(--font-medium);
+    cursor: pointer;
+}
+
+.createForm {
+    background: var(--color-bg-tertiary);
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.input,
+.smallInput {
+    width: 100%;
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    padding: var(--space-2);
+    color: var(--color-text-primary);
+    font-size: var(--text-sm);
+    outline: none;
+}
+
+.input:focus,
+.smallInput:focus {
+    border-color: var(--color-accent-primary);
+}
+
+.optionsList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.optionInputGroup {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+}
+
+.iconBtn {
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    padding: var(--space-1);
+}
+
+.iconBtn:hover {
+    color: var(--color-status-error);
+}
+
+.textLink {
+    background: none;
+    border: none;
+    color: var(--color-accent-primary);
+    font-size: var(--text-xs);
+    cursor: pointer;
+    text-align: left;
+    padding: 0;
+}
+
+.submitBtn {
+    width: 100%;
+    padding: var(--space-2);
+    background: var(--color-accent-primary);
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--color-bg-primary);
+    font-weight: var(--font-medium);
+    cursor: pointer;
+}
+
+.pollList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.emptyState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-8) var(--space-4);
+    color: var(--color-text-muted);
+    text-align: center;
+    gap: var(--space-2);
+}
+
+.emptyState p {
+    font-size: var(--text-xs);
+}
+
+.pollCard {
+    background: var(--color-bg-tertiary);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+    border: 1px solid var(--color-border-subtle);
+    transition: all var(--transition-normal);
+}
+
+.pollCard.visible {
+    border-color: var(--color-accent-primary);
+    box-shadow: 0 0 0 1px var(--color-accent-primary);
+}
+
+.pollHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+}
+
+.pollQuestion {
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--color-text-primary);
+}
+
+.pollActions {
+    display: flex;
+    gap: var(--space-1);
+}
+
+.actionBtn {
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    padding: var(--space-1);
+    border-radius: var(--radius-sm);
+}
+
+.actionBtn:hover {
+    background: var(--color-bg-hover);
+    color: var(--color-text-primary);
+}
+
+.actionBtn.active {
+    color: var(--color-accent-primary);
+}
+
+.results {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.resultRow {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.resultInfo {
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+}
+
+.barBg {
+    height: 4px;
+    background: var(--color-bg-primary);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.barFill {
+    height: 100%;
+    background: var(--color-accent-primary);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+.pollFooter {
+    margin-top: var(--space-3);
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+}

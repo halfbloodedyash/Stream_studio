@@ -1,0 +1,21 @@
+# Render configuration for StreamStudio API
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: streaming-studio-api
+    runtime: node
+    rootDir: backend/api
+    buildCommand: npm install && npm run build && npx prisma generate
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
