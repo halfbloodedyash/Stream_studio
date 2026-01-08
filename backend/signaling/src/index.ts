@@ -1,6 +1,7 @@
 import { WebSocketServer, WebSocket } from "ws";
 import { v4 as uuidv4 } from "uuid";
 import dotenv from "dotenv";
+import { createServer } from "http";
 
 dotenv.config();
 
@@ -34,10 +35,31 @@ interface SignalingMessage {
 const clients = new Map<string, Client>();
 const rooms = new Map<string, Room>();
 
-// Create WebSocket server
-const wss = new WebSocketServer({ port: PORT });
+// Create HTTP server for health checks
+const server = createServer((req, res) => {
+    if (req.url === "/health" || req.url === "/") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({
+            status: "ok",
+            service: "Stream Studio Signaling Server",
+            connections: clients.size,
+            rooms: rooms.size,
+            timestamp: new Date().toISOString()
+        }));
+    } else {
+        res.writeHead(404);
+        res.end("Not Found");
+    }
+});
 
-console.log(`🚀 Signaling server running on ws://localhost:${PORT}`);
+// Create WebSocket server attached to HTTP server
+const wss = new WebSocketServer({ server });
+
+server.listen(PORT, () => {
+    console.log(`🚀 Signaling server running on port ${PORT}`);
+    console.log(`   HTTP: http://localhost:${PORT}`);
+    console.log(`   WebSocket: ws://localhost:${PORT}`);
+});
 
 wss.on("connection", (ws: WebSocket) => {
     const clientId = uuidv4();
