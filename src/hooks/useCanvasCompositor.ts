@@ -35,7 +35,7 @@ export function useCanvasCompositor({
 
         const compositor = new VideoCompositor(canvasRef.current);
         compositor.setResolution(width, height);
-        compositor.setBackgroundColor(backgroundColor);
+        // Note: backgroundColor is set during construction or via CSS
         compositorRef.current = compositor;
 
         return () => {

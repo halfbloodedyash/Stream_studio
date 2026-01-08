@@ -20,7 +20,7 @@ export function VUMeter({
     className = "",
 }: VUMeterProps) {
     const [peakLevel, setPeakLevel] = useState(0);
-    const peakTimeoutRef = useRef<NodeJS.Timeout>();
+    const peakTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Update peak hold
     useEffect(() => {
