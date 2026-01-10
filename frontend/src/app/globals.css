@@ -1,0 +1,136 @@
+@import "tailwindcss";
+
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600&family=Space+Grotesk:wght@400;500;700&family=Syne:wght@700;800&display=swap');
+
+@theme {
+  /* Premium Dark Studio Theme */
+  --color-background: #050505;
+  --color-foreground: #e0e0e0;
+
+  --color-card: #0a0a0a;
+  --color-card-foreground: #e0e0e0;
+
+  --color-popover: #111111;
+  --color-popover-foreground: #e0e0e0;
+
+  --color-primary: #FF3300;
+  --color-primary-foreground: #000000;
+
+  --color-secondary: #FFFFFF;
+  --color-secondary-foreground: #000000;
+
+  --color-muted: #808080;
+  --color-muted-foreground: #808080;
+
+  --color-accent: #FF3300;
+  --color-accent-foreground: #000000;
+
+  --color-destructive: hsl(0, 84.2%, 60.2%);
+  --color-destructive-foreground: hsl(210, 40%, 98%);
+
+  --color-border: #333333;
+  --color-input: #222222;
+  --color-ring: #FF3300;
+
+  /* Layout Constants */
+  --sidebar-width: 320px;
+  --header-height: 64px;
+
+  /* Fonts */
+  --font-display: 'Syne', sans-serif;
+  --font-tech: 'Space Grotesk', monospace;
+  --font-body: 'Manrope', sans-serif;
+}
+
+:root {
+  --bg-deep: #050505;
+  --bg-surface: #0a0a0a;
+  --bg-panel: #111111;
+  --accent-primary: #FF3300;
+  --accent-secondary: #FFFFFF;
+  --text-primary: #e0e0e0;
+  --text-muted: #808080;
+  --grid-line: rgba(255, 255, 255, 0.03);
+
+  --font-display: 'Syne', sans-serif;
+  --font-tech: 'Space Grotesk', monospace;
+  --font-body: 'Manrope', sans-serif;
+}
+
+/* Custom Base layer for shadcn/ui + smooth transitions */
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-primary/20;
+    font-family: var(--font-body);
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+  }
+}
+
+/* Animation utilities */
+@layer utilities {
+  .noise-bg {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  }
+
+  .grid-overlay {
+    background-size: 50px 50px;
+    background-image:
+      linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+    mask-image: radial-gradient(circle at 50% 50%, black 40%, transparent 80%);
+  }
+
+  .animate-live-pulse {
+    animation: livePulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .font-tech {
+    font-family: var(--font-tech);
+  }
+
+  .font-display {
+    font-family: var(--font-display);
+  }
+}
+
+@keyframes livePulse {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: .7;
+    transform: scale(1.1);
+  }
+}
+
+/* Scrollbar Styling - Minimalist */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-muted/50 rounded-full hover:bg-muted transition-colors;
+}

@@ -143,6 +143,10 @@ function handleMessage(client: Client, message: SignalingMessage) {
             handleChat(client, message.payload);
             break;
 
+        case "banner-update":
+            handleBannerUpdate(client, message.payload);
+            break;
+
         case "ping":
             sendMessage(client.ws, { type: "pong" });
             break;
@@ -366,6 +370,15 @@ function handleChat(client: Client, payload: { message: string }) {
             message: payload.message,
             timestamp: new Date().toISOString(),
         },
+    });
+}
+
+function handleBannerUpdate(client: Client, payload: any) {
+    if (!client.roomId) return;
+
+    broadcastToRoom(client.roomId, {
+        type: "banner-update",
+        payload
     });
 }
 

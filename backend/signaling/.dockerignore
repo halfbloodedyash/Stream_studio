@@ -1,0 +1,13 @@
+# Docker
+node_modules
+npm-debug.log
+.git
+.gitignore
+.env
+.env.*
+dist
+*.md
+.DS_Store
+Thumbs.db
+coverage
+*.log
