@@ -19,10 +19,31 @@ const PORT = process.env.PORT || 4000;
 // Trust proxy (required when behind reverse proxy like Nginx, DO App Platform, etc)
 app.set('trust proxy', 1);
 
+// CORS - Allow frontend origins
+const allowedOrigins = [
+    process.env.FRONTEND_URL,
+    "http://localhost:3000",
+    "https://stream-studio-six.vercel.app",
+].filter(Boolean) as string[];
+
 // Security middleware
 app.use(helmet());
 app.use(cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: (origin, callback) => {
+        // Allow requests with no origin (mobile apps, curl, etc)
+        if (!origin) return callback(null, true);
+
+        // Allow all Vercel preview URLs
+        if (origin.includes('vercel.app')) return callback(null, true);
+
+        // Check allowed origins list
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+
+        // In production, be more permissive for debugging
+        if (process.env.NODE_ENV === 'production') return callback(null, true);
+
+        callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
 }));
 
