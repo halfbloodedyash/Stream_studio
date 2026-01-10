@@ -64,8 +64,30 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
  */
 async function getToken(roomName: string, participantName: string): Promise<string> {
     const token = localStorage.getItem("auth_token");
-    if (!token) throw new Error("No auth token found");
 
+    // If no auth token, try guest token endpoint
+    if (!token) {
+        const response = await fetch(`${API_URL}/api/livekit/guest-token`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                roomName,
+                participantName: participantName || "Host",
+            }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || "Failed to get token from server");
+        }
+
+        const data = await response.json();
+        return data.token;
+    }
+
+    // Use authenticated token endpoint
     const response = await fetch(`${API_URL}/api/livekit/token`, {
         method: "POST",
         headers: {
@@ -81,7 +103,7 @@ async function getToken(roomName: string, participantName: string): Promise<stri
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || "Failed to get token from server");
+        throw new Error(errorData.error || "Failed to get token from server");
     }
 
     const data = await response.json();

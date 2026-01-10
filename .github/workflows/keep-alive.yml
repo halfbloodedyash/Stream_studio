@@ -1,0 +1,23 @@
+name: Keep Servers Awake
+
+on:
+  schedule:
+    # Run every 10 minutes
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  ping-servers:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping API Server
+        run: |
+          curl -s https://stream-studio-1.onrender.com/health || echo "API ping failed"
+          
+      - name: Ping Signaling Server
+        run: |
+          curl -s https://stream-studio.onrender.com/health || echo "Signaling ping failed"
+          
+      - name: Log Results
+        run: |
+          echo "Servers pinged at $(date)"
