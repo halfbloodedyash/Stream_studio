@@ -1,11 +1,10 @@
 import { Router, Request, Response } from "express";
 import { z } from "zod";
-import { PrismaClient } from "@prisma/client";
 import { v4 as uuidv4 } from "uuid";
 import { authMiddleware } from "../middleware/auth";
+import { supabase } from "../lib/supabase";
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // Validation schemas
 const createDestinationSchema = z.object({
@@ -46,18 +45,22 @@ router.post("/", authMiddleware, async (req: Request, res: Response) => {
             return res.status(400).json({ error: "RTMP URL is required for custom destinations" });
         }
 
-        const destination = await prisma.destination.create({
-            data: {
+        const { data: destination, error } = await supabase
+            .from("destinations")
+            .insert({
                 id: uuidv4(),
-                userId,
+                user_id: userId,
                 platform,
                 name,
-                rtmpUrl: finalRtmpUrl,
-                streamKey,
+                rtmp_url: finalRtmpUrl,
+                stream_key: streamKey,
                 status: "idle",
                 settings: settings || {},
-            },
-        });
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
 
         res.status(201).json({ destination });
     } catch (error) {
@@ -74,10 +77,13 @@ router.get("/", authMiddleware, async (req: Request, res: Response) => {
     try {
         const userId = (req as any).userId;
 
-        const destinations = await prisma.destination.findMany({
-            where: { userId },
-            orderBy: { createdAt: "desc" },
-        });
+        const { data: destinations, error } = await supabase
+            .from("destinations")
+            .select("*")
+            .eq("user_id", userId)
+            .order("created_at", { ascending: false });
+
+        if (error) throw error;
 
         res.json({ destinations });
     } catch (error) {
@@ -92,11 +98,14 @@ router.get("/:id", authMiddleware, async (req: Request, res: Response) => {
         const userId = (req as any).userId;
         const { id } = req.params;
 
-        const destination = await prisma.destination.findFirst({
-            where: { id, userId },
-        });
+        const { data: destination, error } = await supabase
+            .from("destinations")
+            .select("*")
+            .eq("id", id)
+            .eq("user_id", userId)
+            .single();
 
-        if (!destination) {
+        if (error || !destination) {
             return res.status(404).json({ error: "Destination not found" });
         }
 
@@ -114,16 +123,25 @@ router.put("/:id", authMiddleware, async (req: Request, res: Response) => {
         const { id } = req.params;
         const data = updateDestinationSchema.parse(req.body);
 
-        const result = await prisma.destination.updateMany({
-            where: { id, userId },
-            data,
-        });
+        // Convert to snake_case for Supabase
+        const updateData: Record<string, any> = {};
+        if (data.name) updateData.name = data.name;
+        if (data.rtmpUrl) updateData.rtmp_url = data.rtmpUrl;
+        if (data.streamKey) updateData.stream_key = data.streamKey;
+        if (data.settings) updateData.settings = data.settings;
 
-        if (result.count === 0) {
+        const { data: destination, error } = await supabase
+            .from("destinations")
+            .update(updateData)
+            .eq("id", id)
+            .eq("user_id", userId)
+            .select()
+            .single();
+
+        if (error || !destination) {
             return res.status(404).json({ error: "Destination not found" });
         }
 
-        const destination = await prisma.destination.findUnique({ where: { id } });
         res.json({ destination });
     } catch (error) {
         if (error instanceof z.ZodError) {
@@ -140,13 +158,13 @@ router.delete("/:id", authMiddleware, async (req: Request, res: Response) => {
         const userId = (req as any).userId;
         const { id } = req.params;
 
-        const result = await prisma.destination.deleteMany({
-            where: { id, userId },
-        });
+        const { error } = await supabase
+            .from("destinations")
+            .delete()
+            .eq("id", id)
+            .eq("user_id", userId);
 
-        if (result.count === 0) {
-            return res.status(404).json({ error: "Destination not found" });
-        }
+        if (error) throw error;
 
         res.json({ success: true });
     } catch (error) {
@@ -161,26 +179,24 @@ router.post("/:id/test", authMiddleware, async (req: Request, res: Response) => 
         const userId = (req as any).userId;
         const { id } = req.params;
 
-        const destination = await prisma.destination.findFirst({
-            where: { id, userId },
-        });
+        const { data: destination, error } = await supabase
+            .from("destinations")
+            .select("*")
+            .eq("id", id)
+            .eq("user_id", userId)
+            .single();
 
-        if (!destination) {
+        if (error || !destination) {
             return res.status(404).json({ error: "Destination not found" });
         }
 
-        // In a real implementation, this would:
-        // 1. Connect to the RTMP server
-        // 2. Send a test packet
-        // 3. Verify the connection
-
-        // For now, we'll simulate a successful test
+        // Simulate a successful test
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
         res.json({
             success: true,
             message: "Connection successful",
-            latency: Math.floor(Math.random() * 100) + 50, // Simulated latency
+            latency: Math.floor(Math.random() * 100) + 50,
         });
     } catch (error) {
         console.error("Test destination error:", error);

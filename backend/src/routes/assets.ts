@@ -1,13 +1,12 @@
 import { Router, Request, Response } from "express";
 import multer from "multer";
-import { PrismaClient } from "@prisma/client";
 import { v4 as uuidv4 } from "uuid";
 import path from "path";
 import fs from "fs";
 import { authMiddleware } from "../middleware/auth";
+import { supabase } from "../lib/supabase";
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -51,19 +50,23 @@ router.post("/upload", authMiddleware, upload.single("file"), async (req: Reques
             return res.status(400).json({ error: "No file uploaded" });
         }
 
-        const asset = await prisma.asset.create({
-            data: {
+        const { data: asset, error } = await supabase
+            .from("assets")
+            .insert({
                 id: uuidv4(),
-                userId,
+                user_id: userId,
                 type,
                 filename: file.originalname,
-                storageUrl: `/uploads/${file.filename}`,
-                sizeBytes: file.size,
+                storage_url: `/uploads/${file.filename}`,
+                size_bytes: file.size,
                 metadata: {
                     mimetype: file.mimetype,
                 },
-            },
-        });
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
 
         res.status(201).json({ asset });
     } catch (error) {
@@ -78,15 +81,19 @@ router.get("/", authMiddleware, async (req: Request, res: Response) => {
         const userId = (req as any).userId;
         const { type } = req.query;
 
-        const where: any = { userId };
+        let query = supabase
+            .from("assets")
+            .select("*")
+            .eq("user_id", userId)
+            .order("created_at", { ascending: false });
+
         if (type) {
-            where.type = type;
+            query = query.eq("type", type as string);
         }
 
-        const assets = await prisma.asset.findMany({
-            where,
-            orderBy: { createdAt: "desc" },
-        });
+        const { data: assets, error } = await query;
+
+        if (error) throw error;
 
         res.json({ assets });
     } catch (error) {
@@ -101,11 +108,14 @@ router.get("/:id", authMiddleware, async (req: Request, res: Response) => {
         const userId = (req as any).userId;
         const { id } = req.params;
 
-        const asset = await prisma.asset.findFirst({
-            where: { id, userId },
-        });
+        const { data: asset, error } = await supabase
+            .from("assets")
+            .select("*")
+            .eq("id", id)
+            .eq("user_id", userId)
+            .single();
 
-        if (!asset) {
+        if (error || !asset) {
             return res.status(404).json({ error: "Asset not found" });
         }
 
@@ -122,22 +132,30 @@ router.delete("/:id", authMiddleware, async (req: Request, res: Response) => {
         const userId = (req as any).userId;
         const { id } = req.params;
 
-        const asset = await prisma.asset.findFirst({
-            where: { id, userId },
-        });
+        const { data: asset, error: findError } = await supabase
+            .from("assets")
+            .select("*")
+            .eq("id", id)
+            .eq("user_id", userId)
+            .single();
 
-        if (!asset) {
+        if (findError || !asset) {
             return res.status(404).json({ error: "Asset not found" });
         }
 
         // Delete file from disk
-        const filePath = path.join(process.cwd(), asset.storageUrl);
+        const filePath = path.join(process.cwd(), asset.storage_url);
         if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
         }
 
         // Delete from database
-        await prisma.asset.delete({ where: { id } });
+        const { error: deleteError } = await supabase
+            .from("assets")
+            .delete()
+            .eq("id", id);
+
+        if (deleteError) throw deleteError;
 
         res.json({ success: true });
     } catch (error) {

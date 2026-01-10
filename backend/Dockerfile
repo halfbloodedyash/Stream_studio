@@ -9,11 +9,7 @@ WORKDIR /app
 
 # Install dependencies
 COPY package*.json ./
-RUN npm ci --only=production=false
-
-# Copy prisma schema first for generation
-COPY prisma ./prisma
-RUN npx prisma generate
+RUN npm ci
 
 # Copy source and build
 COPY tsconfig.json ./
@@ -33,15 +29,11 @@ RUN addgroup -g 1001 -S nodejs && \
 COPY package*.json ./
 RUN npm ci --only=production && npm cache clean --force
 
-# Copy prisma client and schema
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/prisma ./prisma
-
 # Copy built application
 COPY --from=builder /app/dist ./dist
 
-# Create media directory for uploads
-RUN mkdir -p /app/media && chown -R nodejs:nodejs /app/media
+# Create uploads directory
+RUN mkdir -p /app/uploads && chown -R nodejs:nodejs /app/uploads
 
 # Switch to non-root user
 USER nodejs
