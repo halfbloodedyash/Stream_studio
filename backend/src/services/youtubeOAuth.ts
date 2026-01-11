@@ -1,4 +1,5 @@
 import { google } from "googleapis";
+import { safeGet, safeSet, safeDel, isRedisAvailable } from "../lib/redis";
 
 // YouTube OAuth Configuration
 const YOUTUBE_CLIENT_ID = process.env.YOUTUBE_CLIENT_ID || "";
@@ -11,16 +12,27 @@ const SCOPES = [
     "https://www.googleapis.com/auth/youtube.force-ssl",
 ];
 
-// In-memory token storage (use a database in production)
-const tokenStore: Map<string, {
+// In-memory fallback (used when Redis is unavailable)
+const memoryTokenStore: Map<string, {
     accessToken: string;
     refreshToken: string;
     expiresAt: number;
 }> = new Map();
 
+// Redis key prefix and TTL
+const REDIS_KEY_PREFIX = "youtube:tokens:";
+const TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
+
+interface TokenData {
+    accessToken: string;
+    refreshToken: string;
+    expiresAt: number;
+}
+
 /**
  * YouTube OAuth Service
  * Handles OAuth2 authentication flow for YouTube API access
+ * Uses Redis for persistent storage with in-memory fallback
  */
 export class YouTubeOAuthService {
     private oauth2Client;
@@ -46,24 +58,62 @@ export class YouTubeOAuthService {
     }
 
     /**
+     * Store tokens (tries Redis first, falls back to memory)
+     */
+    private async storeTokens(userId: string, tokenData: TokenData): Promise<void> {
+        const redisKey = `${REDIS_KEY_PREFIX}${userId}`;
+        const stored = await safeSet(redisKey, JSON.stringify(tokenData), TOKEN_TTL_SECONDS);
+
+        if (stored) {
+            console.log(`[YOUTUBE] Stored tokens in Redis for user: ${userId}`);
+        } else {
+            // Fallback to in-memory
+            memoryTokenStore.set(userId, tokenData);
+            console.log(`[YOUTUBE] Stored tokens in memory for user: ${userId} (Redis unavailable)`);
+        }
+    }
+
+    /**
+     * Retrieve tokens (tries Redis first, falls back to memory)
+     */
+    private async getStoredTokens(userId: string): Promise<TokenData | null> {
+        const redisKey = `${REDIS_KEY_PREFIX}${userId}`;
+        const redisData = await safeGet(redisKey);
+
+        if (redisData) {
+            try {
+                return JSON.parse(redisData) as TokenData;
+            } catch {
+                console.error(`[YOUTUBE] Failed to parse Redis token data for user: ${userId}`);
+            }
+        }
+
+        // Fallback to in-memory
+        return memoryTokenStore.get(userId) || null;
+    }
+
+    /**
+     * Delete tokens from storage
+     */
+    private async deleteTokens(userId: string): Promise<void> {
+        const redisKey = `${REDIS_KEY_PREFIX}${userId}`;
+        await safeDel(redisKey);
+        memoryTokenStore.delete(userId);
+    }
+
+    /**
      * Exchange authorization code for tokens
      */
-    async exchangeCode(code: string, userId: string): Promise<{
-        accessToken: string;
-        refreshToken: string;
-        expiresAt: number;
-    }> {
+    async exchangeCode(code: string, userId: string): Promise<TokenData> {
         const { tokens } = await this.oauth2Client.getToken(code);
 
-        const tokenData = {
+        const tokenData: TokenData = {
             accessToken: tokens.access_token!,
             refreshToken: tokens.refresh_token!,
             expiresAt: tokens.expiry_date || Date.now() + 3600000,
         };
 
-        // Store tokens
-        tokenStore.set(userId, tokenData);
-        console.log(`[YOUTUBE] Stored tokens for user: ${userId}`);
+        await this.storeTokens(userId, tokenData);
 
         return tokenData;
     }
@@ -72,7 +122,7 @@ export class YouTubeOAuthService {
      * Get valid tokens for a user, refreshing if necessary
      */
     async getValidTokens(userId: string): Promise<string | null> {
-        const tokens = tokenStore.get(userId);
+        const tokens = await this.getStoredTokens(userId);
         if (!tokens) {
             console.log(`[YOUTUBE] No tokens found for user: ${userId}`);
             return null;
@@ -90,12 +140,12 @@ export class YouTubeOAuthService {
                 // Update stored tokens
                 tokens.accessToken = credentials.access_token!;
                 tokens.expiresAt = credentials.expiry_date || Date.now() + 3600000;
-                tokenStore.set(userId, tokens);
+                await this.storeTokens(userId, tokens);
 
                 return tokens.accessToken;
             } catch (error) {
                 console.error(`[YOUTUBE] Token refresh failed:`, error);
-                tokenStore.delete(userId);
+                await this.deleteTokens(userId);
                 return null;
             }
         }
@@ -106,15 +156,16 @@ export class YouTubeOAuthService {
     /**
      * Check if user is connected to YouTube
      */
-    isConnected(userId: string): boolean {
-        return tokenStore.has(userId);
+    async isConnected(userId: string): Promise<boolean> {
+        const tokens = await this.getStoredTokens(userId);
+        return tokens !== null;
     }
 
     /**
      * Disconnect user from YouTube
      */
-    disconnect(userId: string): void {
-        tokenStore.delete(userId);
+    async disconnect(userId: string): Promise<void> {
+        await this.deleteTokens(userId);
         console.log(`[YOUTUBE] Disconnected user: ${userId}`);
     }
 

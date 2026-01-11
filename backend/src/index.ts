@@ -26,6 +26,7 @@ const allowedOrigins = [
     process.env.FRONTEND_URL,
     "http://localhost:3000",
     "https://stream-studio-six.vercel.app",
+    "https://stream.yashh.tech",
 ].filter(Boolean) as string[];
 
 // Security middleware

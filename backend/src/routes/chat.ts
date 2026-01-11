@@ -3,11 +3,71 @@ import { z } from "zod";
 import { authMiddleware } from "../middleware/auth";
 import { youtubeOAuthService } from "../services/youtubeOAuth";
 import { youtubeChatService, ChatMessage } from "../services/youtubeChat";
+import { safeGet, safeSet, safeDel } from "../lib/redis";
 
 const router = Router();
 
-// In-memory storage for highlighted messages (use Redis/DB in production)
-const highlightedMessages: Map<string, ChatMessage & { expiresAt: number }> = new Map();
+// In-memory fallback for highlighted messages
+const memoryHighlights: Map<string, ChatMessage & { expiresAt: number }> = new Map();
+
+// Redis key prefix for highlights
+const HIGHLIGHT_KEY_PREFIX = "highlight:";
+
+/**
+ * Helper to get highlighted message (Redis or memory)
+ */
+async function getHighlight(roomId: string): Promise<(ChatMessage & { expiresAt: number }) | null> {
+    const redisKey = `${HIGHLIGHT_KEY_PREFIX}${roomId}`;
+    const redisData = await safeGet(redisKey);
+
+    if (redisData) {
+        try {
+            const data = JSON.parse(redisData);
+            data.timestamp = new Date(data.timestamp);
+            return data;
+        } catch {
+            console.error(`[CHAT] Failed to parse highlight data for room: ${roomId}`);
+        }
+    }
+
+    return memoryHighlights.get(`${roomId}:highlight`) || null;
+}
+
+/**
+ * Helper to set highlighted message (Redis or memory)
+ */
+async function setHighlight(
+    roomId: string,
+    message: ChatMessage & { expiresAt: number },
+    durationMs: number
+): Promise<void> {
+    const redisKey = `${HIGHLIGHT_KEY_PREFIX}${roomId}`;
+    const ttlSeconds = Math.ceil(durationMs / 1000);
+
+    const stored = await safeSet(redisKey, JSON.stringify(message), ttlSeconds);
+
+    if (!stored) {
+        // Fallback to memory with timeout
+        const memKey = `${roomId}:highlight`;
+        memoryHighlights.set(memKey, message);
+
+        setTimeout(() => {
+            const current = memoryHighlights.get(memKey);
+            if (current && current.id === message.id) {
+                memoryHighlights.delete(memKey);
+            }
+        }, durationMs);
+    }
+}
+
+/**
+ * Helper to delete highlighted message
+ */
+async function deleteHighlight(roomId: string): Promise<void> {
+    const redisKey = `${HIGHLIGHT_KEY_PREFIX}${roomId}`;
+    await safeDel(redisKey);
+    memoryHighlights.delete(`${roomId}:highlight`);
+}
 
 // =============================================================================
 // YOUTUBE OAUTH ENDPOINTS
@@ -73,7 +133,7 @@ router.get("/youtube/callback", async (req: Request, res: Response) => {
 router.get("/youtube/status", authMiddleware, async (req: Request, res: Response) => {
     try {
         const userId = (req as any).userId;
-        const isConnected = youtubeOAuthService.isConnected(userId);
+        const isConnected = await youtubeOAuthService.isConnected(userId);
 
         if (isConnected) {
             // Get channel info if connected
@@ -98,7 +158,7 @@ router.get("/youtube/status", authMiddleware, async (req: Request, res: Response
 router.post("/youtube/disconnect", authMiddleware, async (req: Request, res: Response) => {
     try {
         const userId = (req as any).userId;
-        youtubeOAuthService.disconnect(userId);
+        await youtubeOAuthService.disconnect(userId);
 
         res.json({ success: true, message: "Disconnected from YouTube" });
     } catch (error: any) {
@@ -220,22 +280,13 @@ router.post("/highlight", authMiddleware, async (req: Request, res: Response) =>
 
         const data = schema.parse(req.body);
 
-        // Store highlighted message with expiration
-        const highlightKey = `${data.roomId}:highlight`;
-        highlightedMessages.set(highlightKey, {
+        const highlightData = {
             ...data.message,
             timestamp: new Date(),
             expiresAt: Date.now() + data.duration,
-        } as any);
+        } as ChatMessage & { expiresAt: number };
 
-        // Auto-remove after duration
-        setTimeout(() => {
-            const current = highlightedMessages.get(highlightKey);
-            if (current && current.id === data.message.id) {
-                highlightedMessages.delete(highlightKey);
-                console.log(`[CHAT] Highlight expired for room: ${data.roomId}`);
-            }
-        }, data.duration);
+        await setHighlight(data.roomId, highlightData, data.duration);
 
         console.log(`[CHAT] Highlighted message in room ${data.roomId}: "${data.message.message.substring(0, 50)}..."`);
 
@@ -259,12 +310,11 @@ router.post("/highlight", authMiddleware, async (req: Request, res: Response) =>
 router.get("/highlight/:roomId", async (req: Request, res: Response) => {
     try {
         const { roomId } = req.params;
-        const highlightKey = `${roomId}:highlight`;
-        const highlight = highlightedMessages.get(highlightKey);
+        const highlight = await getHighlight(roomId);
 
         if (!highlight || Date.now() > highlight.expiresAt) {
             // Clean up expired
-            highlightedMessages.delete(highlightKey);
+            await deleteHighlight(roomId);
             return res.json({ highlight: null });
         }
 
@@ -294,8 +344,7 @@ router.get("/highlight/:roomId", async (req: Request, res: Response) => {
 router.delete("/highlight/:roomId", authMiddleware, async (req: Request, res: Response) => {
     try {
         const { roomId } = req.params;
-        const highlightKey = `${roomId}:highlight`;
-        highlightedMessages.delete(highlightKey);
+        await deleteHighlight(roomId);
 
         console.log(`[CHAT] Removed highlight for room: ${roomId}`);
 
