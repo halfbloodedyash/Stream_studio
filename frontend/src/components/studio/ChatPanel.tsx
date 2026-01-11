@@ -107,7 +107,7 @@ export function ChatPanel({ roomId, onHighlightMessage }: ChatPanelProps) {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat/youtube/status`, {
         credentials: "include",
         headers: {
-          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+          "Authorization": `Bearer ${localStorage.getItem("auth_token")}`,
         },
       });
       const data = await response.json();
@@ -132,7 +132,7 @@ export function ChatPanel({ roomId, onHighlightMessage }: ChatPanelProps) {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat/youtube/auth`, {
         credentials: "include",
         headers: {
-          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+          "Authorization": `Bearer ${localStorage.getItem("auth_token")}`,
         },
       });
       const data = await response.json();
@@ -152,7 +152,7 @@ export function ChatPanel({ roomId, onHighlightMessage }: ChatPanelProps) {
         method: "POST",
         credentials: "include",
         headers: {
-          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+          "Authorization": `Bearer ${localStorage.getItem("auth_token")}`,
         },
       });
 
@@ -176,7 +176,7 @@ export function ChatPanel({ roomId, onHighlightMessage }: ChatPanelProps) {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat/youtube/broadcasts`, {
         credentials: "include",
         headers: {
-          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+          "Authorization": `Bearer ${localStorage.getItem("auth_token")}`,
         },
       });
       const data = await response.json();
@@ -215,7 +215,7 @@ export function ChatPanel({ roomId, onHighlightMessage }: ChatPanelProps) {
           {
             credentials: "include",
             headers: {
-              "Authorization": `Bearer ${localStorage.getItem("token")}`,
+              "Authorization": `Bearer ${localStorage.getItem("auth_token")}`,
             },
           }
         );
@@ -263,7 +263,7 @@ export function ChatPanel({ roomId, onHighlightMessage }: ChatPanelProps) {
             method: "POST",
             credentials: "include",
             headers: {
-              "Authorization": `Bearer ${localStorage.getItem("token")}`,
+              "Authorization": `Bearer ${localStorage.getItem("auth_token")}`,
               "Content-Type": "application/json",
             },
             body: JSON.stringify({ message: inputText }),
@@ -299,7 +299,7 @@ export function ChatPanel({ roomId, onHighlightMessage }: ChatPanelProps) {
           method: "POST",
           credentials: "include",
           headers: {
-            "Authorization": `Bearer ${localStorage.getItem("token")}`,
+            "Authorization": `Bearer ${localStorage.getItem("auth_token")}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
