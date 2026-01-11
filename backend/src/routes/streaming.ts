@@ -7,7 +7,7 @@ const router = Router();
 
 // Validation schemas
 const startStreamSchema = z.object({
-    destinationId: z.string().uuid(),
+    destinationId: z.string().min(1), // Accept any string ID (timestamps, UUIDs, etc.)
     inputSource: z.string().optional(), // RTMP input or local source
 });
 
