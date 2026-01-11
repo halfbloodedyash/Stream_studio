@@ -15,18 +15,23 @@ interface ApiOptions {
 
 class ApiClient {
     private baseUrl: string;
-    private token: string | null = null;
+    private _token: string | null = null;
 
     constructor(baseUrl: string) {
         this.baseUrl = baseUrl;
-        // Load token from localStorage if available
+    }
+
+    // Getter that always reads the fresh token from localStorage
+    private get token(): string | null {
+        if (this._token) return this._token;
         if (typeof window !== "undefined") {
-            this.token = localStorage.getItem("auth_token");
+            return localStorage.getItem("auth_token");
         }
+        return null;
     }
 
     setToken(token: string | null) {
-        this.token = token;
+        this._token = token;
         if (typeof window !== "undefined") {
             if (token) {
                 localStorage.setItem("auth_token", token);
@@ -48,8 +53,10 @@ class ApiClient {
             ...headers,
         };
 
-        if (this.token) {
-            requestHeaders["Authorization"] = `Bearer ${this.token}`;
+        // Always get fresh token for each request
+        const currentToken = this.token;
+        if (currentToken) {
+            requestHeaders["Authorization"] = `Bearer ${currentToken}`;
         }
 
         const response = await fetch(`${this.baseUrl}${endpoint}`, {
