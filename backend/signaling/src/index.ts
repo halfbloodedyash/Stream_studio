@@ -74,7 +74,8 @@ wss.on("connection", (ws: WebSocket) => {
     };
 
     clients.set(clientId, client);
-    console.log(`Client connected: ${clientId}`);
+    console.log(`[SERVER] ✅ Client connected: ${clientId}`);
+    console.log(`[SERVER] 📊 Total clients: ${clients.size}, Total rooms: ${rooms.size}`);
 
     // Send client their ID
     sendMessage(ws, {
@@ -85,16 +86,18 @@ wss.on("connection", (ws: WebSocket) => {
     ws.on("message", (data: Buffer) => {
         try {
             const message: SignalingMessage = JSON.parse(data.toString());
+            console.log(`[SERVER] 📨 Received from ${clientId}: ${message.type}`, message.payload ? JSON.stringify(message.payload).substring(0, 100) : '');
             handleMessage(client, message);
         } catch (error) {
-            console.error("Invalid message:", error);
+            console.error(`[SERVER] ❌ Invalid message from ${clientId}:`, error);
         }
     });
 
     ws.on("close", () => {
+        console.log(`[SERVER] 🔴 Client disconnecting: ${clientId} (was in room: ${client.roomId || 'none'})`);
         handleDisconnect(client);
         clients.delete(clientId);
-        console.log(`Client disconnected: ${clientId}`);
+        console.log(`[SERVER] 📊 After disconnect - Total clients: ${clients.size}`);
     });
 
     ws.on("error", (error) => {
@@ -158,9 +161,11 @@ function handleMessage(client: Client, message: SignalingMessage) {
 
 function handleCreateRoom(client: Client, payload: { roomId: string; userId: string; name: string }) {
     const { roomId, userId, name } = payload;
+    console.log(`[SERVER] 🏠 Create room request - Room: ${roomId}, Host: ${name} (${client.id})`);
 
     // Check if room already exists
     if (rooms.has(roomId)) {
+        console.log(`[SERVER] ⚠️ Room ${roomId} already exists`);
         sendMessage(client.ws, {
             type: "error",
             payload: { message: "Room already exists" },
@@ -192,20 +197,26 @@ function handleCreateRoom(client: Client, payload: { roomId: string; userId: str
         payload: { roomId },
     });
 
-    console.log(`Room created: ${roomId} by ${client.id}`);
+    console.log(`[SERVER] ✅ Room created: ${roomId} by host ${name}`);
+    console.log(`[SERVER] 📊 Total rooms now: ${rooms.size}`);
 }
 
 function handleJoinRoom(client: Client, payload: { roomId: string; name: string; inviteToken?: string }) {
     const { roomId, name, inviteToken } = payload;
+    console.log(`[SERVER] 🚪 Join room request - Room: ${roomId}, Guest: ${name} (${client.id})`);
 
     const room = rooms.get(roomId);
     if (!room) {
+        console.log(`[SERVER] ❌ Room ${roomId} NOT FOUND!`);
+        console.log(`[SERVER] 📋 Available rooms:`, Array.from(rooms.keys()));
         sendMessage(client.ws, {
             type: "error",
             payload: { message: "Room not found" },
         });
         return;
     }
+
+    console.log(`[SERVER] ✅ Room ${roomId} found. Host: ${room.hostId}`);
 
     // Update client
     client.roomId = roomId;
@@ -214,10 +225,12 @@ function handleJoinRoom(client: Client, payload: { roomId: string; name: string;
 
     // Add to room's waiting list
     room.clients.set(client.id, client);
+    console.log(`[SERVER] ➕ Added ${name} to room. Total in room: ${room.clients.size}`);
 
     // Notify host about new guest
     const host = room.clients.get(room.hostId);
     if (host) {
+        console.log(`[SERVER] 📤 Notifying host ${host.name} about guest ${name}`);
         sendMessage(host.ws, {
             type: "guest-waiting",
             payload: {
@@ -225,6 +238,9 @@ function handleJoinRoom(client: Client, payload: { roomId: string; name: string;
                 name: client.name,
             },
         });
+    } else {
+        console.log(`[SERVER] ⚠️ Host ${room.hostId} not found in room clients!`);
+        console.log(`[SERVER] 📋 Room clients:`, Array.from(room.clients.keys()));
     }
 
     // Notify client they're waiting
@@ -233,7 +249,7 @@ function handleJoinRoom(client: Client, payload: { roomId: string; name: string;
         payload: { roomId },
     });
 
-    console.log(`Client ${client.id} waiting to join room ${roomId}`);
+    console.log(`[SERVER] ✅ Guest ${name} (${client.id}) now waiting in room ${roomId}`);
 }
 
 function handleAdmitGuest(client: Client, payload: { guestId: string }) {

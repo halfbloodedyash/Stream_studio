@@ -58,17 +58,19 @@ function JoinPageContent() {
 
   // Signaling Event Listeners
   useEffect(() => {
+    console.log(`[GUEST] 🎬 Setting up signaling listeners for room: ${roomCode}`);
+
     const onConnect = () => {
-      console.log("Connected to signaling server");
+      console.log(`[GUEST] ✅ Connected to signaling server. ClientId: ${signalingClient.getClientId()}`);
     };
 
     const onWaitingRoom = (payload: any) => {
-      console.log("Joined waiting room", payload);
+      console.log(`[GUEST] 🚪 Entered waiting room!`, payload);
       setConnectionState("waiting");
     };
 
     const onAdmitted = async (payload: any) => {
-      console.log("Admitted to room!", payload);
+      console.log(`[GUEST] 🎉 ADMITTED to room!`, payload);
       setConnectionState("admitted");
 
       try {
@@ -99,14 +101,22 @@ function JoinPageContent() {
     };
 
     const onRemoved = (payload: any) => {
-      console.log("Removed/Rejected from room", payload);
+      console.log(`[GUEST] ❌ Removed/Rejected from room`, payload);
       setConnectionState("rejected");
       signalingClient.disconnect();
     };
 
     const onError = (err: any) => {
-      console.error("Signaling error", err);
-      // If we are waiting, connection error might mean lost connection
+      console.error(`[GUEST] ❌ Signaling error:`, err);
+      setError(`Connection error: ${err?.message || 'Unknown error'}`);
+    };
+
+    const onDisconnect = () => {
+      console.log(`[GUEST] 🔴 Signaling disconnected`);
+      if (connectionState === "waiting") {
+        setError("Lost connection to server. Please try again.");
+        setConnectionState("initial");
+      }
     };
 
     signalingClient.on("connect", onConnect);
@@ -114,6 +124,7 @@ function JoinPageContent() {
     signalingClient.on("admitted", onAdmitted);
     signalingClient.on("removed", onRemoved);
     signalingClient.on("error", onError);
+    signalingClient.on("disconnect", onDisconnect);
 
     return () => {
       signalingClient.off("connect", onConnect);
@@ -121,6 +132,7 @@ function JoinPageContent() {
       signalingClient.off("admitted", onAdmitted);
       signalingClient.off("removed", onRemoved);
       signalingClient.off("error", onError);
+      signalingClient.off("disconnect", onDisconnect);
     };
   }, [roomCode, guestName, stream]);
 
@@ -160,22 +172,42 @@ function JoinPageContent() {
   };
 
   const handleJoinRequest = () => {
+    console.log(`[GUEST] 🚀 Join request initiated for room: ${roomCode}, name: ${guestName}`);
     setConnectionState("connecting");
-    if (!signalingClient.getClientId()) {
-      signalingClient.connect();
-      // Give it a moment to connect or wait for 'connect' event ideally
-      // But for simplicity in this flow, we'll wait 500ms
-      setTimeout(() => {
-        signalingClient.send("join-room", {
-          roomId: roomCode,
-          name: guestName
-        });
-      }, 500);
-    } else {
+
+    const sendJoinMessage = () => {
+      console.log(`[GUEST] 📤 Sending join-room message...`);
       signalingClient.send("join-room", {
         roomId: roomCode,
         name: guestName
       });
+    };
+
+    if (!signalingClient.getClientId()) {
+      console.log(`[GUEST] 🔌 Not connected, initiating connection first...`);
+      signalingClient.connect();
+
+      // Wait for connection with a check loop instead of fixed timeout
+      let attempts = 0;
+      const maxAttempts = 10;
+      const checkConnection = setInterval(() => {
+        attempts++;
+        console.log(`[GUEST] ⏳ Waiting for connection... attempt ${attempts}/${maxAttempts}`);
+
+        if (signalingClient.getClientId()) {
+          clearInterval(checkConnection);
+          console.log(`[GUEST] ✅ Connected! ClientId: ${signalingClient.getClientId()}`);
+          sendJoinMessage();
+        } else if (attempts >= maxAttempts) {
+          clearInterval(checkConnection);
+          console.error(`[GUEST] ❌ Connection timeout after ${maxAttempts} attempts`);
+          setError("Could not connect to signaling server. Is it running?");
+          setConnectionState("initial");
+        }
+      }, 500);
+    } else {
+      console.log(`[GUEST] ✅ Already connected as: ${signalingClient.getClientId()}`);
+      sendJoinMessage();
     }
   };
 

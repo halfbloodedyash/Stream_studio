@@ -161,36 +161,63 @@ export default function StudioPage() {
     useEffect(() => {
         if (!user || !roomId) return;
 
+        console.log(`[HOST] 🎬 Initializing signaling for room: ${roomId}`);
+
         const connectSignaling = () => {
+            console.log(`[HOST] 🔌 Connecting to signaling server...`);
             signalingClient.connect();
 
-            // Allow a small delay for connection
-            setTimeout(() => {
-                signalingClient.send("create-room", {
-                    roomId,
-                    userId: user.id || "host",
-                    name: user.email || "Host"
-                });
+            // Wait for connection with retry logic
+            let attempts = 0;
+            const maxAttempts = 10;
+            const checkAndCreateRoom = setInterval(() => {
+                attempts++;
+
+                if (signalingClient.getClientId()) {
+                    clearInterval(checkAndCreateRoom);
+                    console.log(`[HOST] ✅ Connected! Creating room: ${roomId}`);
+                    signalingClient.send("create-room", {
+                        roomId,
+                        userId: user.id || "host",
+                        name: user.email || "Host"
+                    });
+                } else if (attempts >= maxAttempts) {
+                    clearInterval(checkAndCreateRoom);
+                    console.error(`[HOST] ❌ Failed to connect after ${maxAttempts} attempts`);
+                    addToast("Failed to connect to signaling server", "error");
+                } else {
+                    console.log(`[HOST] ⏳ Waiting for connection... attempt ${attempts}/${maxAttempts}`);
+                }
             }, 500);
         };
 
         const onGuestWaiting = (payload: { clientId: string; name: string }) => {
-            console.log("Guest waiting:", payload);
+            console.log(`[HOST] 🚪 GUEST WAITING:`, payload);
+            console.log(`[HOST] 👤 Guest name: ${payload.name}, clientId: ${payload.clientId}`);
             setWaitingGuests(prev => {
-                if (prev.some(g => g.clientId === payload.clientId)) return prev;
+                if (prev.some(g => g.clientId === payload.clientId)) {
+                    console.log(`[HOST] ⚠️ Guest ${payload.name} already in waiting list`);
+                    return prev;
+                }
+                console.log(`[HOST] ➕ Adding ${payload.name} to waiting list. Total: ${prev.length + 1}`);
                 return [...prev, payload];
             });
             addToast(`${payload.name} is waiting to join`, "info");
         };
 
         const onParticipantJoined = (payload: { clientId: string }) => {
-            // Remove from waiting list if they joined
+            console.log(`[HOST] ✅ Participant joined:`, payload);
             setWaitingGuests(prev => prev.filter(g => g.clientId !== payload.clientId));
         };
 
         const onParticipantLeft = (payload: { clientId: string }) => {
-            // Also remove if they left (canceled request)
+            console.log(`[HOST] 👋 Participant left:`, payload);
             setWaitingGuests(prev => prev.filter(g => g.clientId !== payload.clientId));
+        };
+
+        const onRoomCreated = (payload: { roomId: string }) => {
+            console.log(`[HOST] 🎉 Room created successfully:`, payload);
+            addToast("Room ready for guests!", "success");
         };
 
         const onBannerUpdate = (payload: { activeBanner: BannerData | null; banners: BannerData[] }) => {
@@ -200,21 +227,39 @@ export default function StudioPage() {
         };
 
         const onError = (payload: { message: string }) => {
-            console.warn("Signaling error:", payload);
-            if (payload.message === "Room already exists") return;
+            console.warn(`[HOST] ⚠️ Signaling error:`, payload);
+            if (payload.message === "Room already exists") {
+                console.log(`[HOST] ℹ️ Room already exists - this is OK, we're reconnecting`);
+                return;
+            }
             addToast(`Signaling: ${payload.message}`, "error");
         };
 
-        signalingClient.on("connect", () => console.log("Signaling connected"));
+        const onConnected = () => {
+            console.log(`[HOST] 🔌 Signaling connected. ClientId: ${signalingClient.getClientId()}`);
+        };
+
+        const onDisconnected = () => {
+            console.log(`[HOST] 🔴 Signaling disconnected`);
+        };
+
+        signalingClient.on("connect", onConnected);
+        signalingClient.on("disconnect", onDisconnected);
+        signalingClient.on("room-created", onRoomCreated);
         signalingClient.on("guest-waiting", onGuestWaiting);
-        signalingClient.on("participant-joined", onParticipantJoined); // Fallback cleanup
+        signalingClient.on("participant-joined", onParticipantJoined);
         signalingClient.on("participant-left", onParticipantLeft);
         signalingClient.on("banner-update", onBannerUpdate);
         signalingClient.on("error", onError);
 
+        console.log(`[HOST] 📡 Event listeners registered, connecting...`);
         connectSignaling();
 
         return () => {
+            console.log(`[HOST] 🧹 Cleaning up signaling listeners`);
+            signalingClient.off("connect", onConnected);
+            signalingClient.off("disconnect", onDisconnected);
+            signalingClient.off("room-created", onRoomCreated);
             signalingClient.off("guest-waiting", onGuestWaiting);
             signalingClient.off("participant-joined", onParticipantJoined);
             signalingClient.off("participant-left", onParticipantLeft);
