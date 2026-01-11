@@ -55,6 +55,7 @@ interface Destination {
     status: "idle" | "connecting" | "live" | "error" | "reconnecting";
     streamKey: string;
     streamUrl: string;
+    egressId?: string; // LiveKit Egress ID when streaming
     error?: string;
     stats?: {
         bitrate: number;
@@ -125,7 +126,11 @@ const PLATFORM_PRESETS = {
 
 type PlatformType = keyof typeof PLATFORM_PRESETS;
 
-export function DestinationsPanel() {
+interface DestinationsPanelProps {
+    roomName?: string; // LiveKit room name for egress
+}
+
+export function DestinationsPanel({ roomName }: DestinationsPanelProps) {
     const [destinations, setDestinations] = useState<Destination[]>([]);
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [selectedPlatform, setSelectedPlatform] = useState<PlatformType | null>(null);
@@ -209,36 +214,51 @@ export function DestinationsPanel() {
         if (!dest) return;
 
         if (dest.status === "idle") {
-            // Start streaming
+            // Check if we have a room name for egress
+            if (!roomName) {
+                addToast("Cannot stream: No active room. Please join a room first.", "error");
+                return;
+            }
+
+            // Start streaming using LiveKit Egress
             setDestinations(destinations.map((d) =>
-                d.id === id ? { ...d, status: "connecting" as const } : d
+                d.id === id ? { ...d, status: "connecting" as const, error: undefined } : d
             ));
 
             try {
-                await apiClient.streaming.start(id);
+                console.log(`[DESTINATIONS] Starting egress for room: ${roomName}`);
+                console.log(`[DESTINATIONS] RTMP URL: ${dest.streamUrl}`);
 
-                // Simulate successful connection after a delay
-                setTimeout(() => {
-                    setDestinations((prev) =>
-                        prev.map((d) =>
-                            d.id === id
-                                ? {
-                                    ...d,
-                                    status: "live" as const,
-                                    stats: {
-                                        bitrate: 4500,
-                                        fps: 30,
-                                        droppedFrames: 0,
-                                        duration: 0,
-                                        connectionQuality: "excellent" as const,
-                                    },
-                                }
-                                : d
-                        )
-                    );
-                    addToast(`Now streaming to ${dest.name}!`, "success");
-                }, 2000);
+                // Use LiveKit Egress API for actual streaming
+                const result = await apiClient.egress.startStream({
+                    roomName: roomName,
+                    rtmpUrl: dest.streamUrl,
+                    streamKey: dest.streamKey,
+                });
+
+                console.log(`[DESTINATIONS] Egress started! ID: ${result.egressId}`);
+
+                setDestinations((prev) =>
+                    prev.map((d) =>
+                        d.id === id
+                            ? {
+                                ...d,
+                                status: "live" as const,
+                                egressId: result.egressId,
+                                stats: {
+                                    bitrate: 4500,
+                                    fps: 30,
+                                    droppedFrames: 0,
+                                    duration: 0,
+                                    connectionQuality: "excellent" as const,
+                                },
+                            }
+                            : d
+                    )
+                );
+                addToast(`Now streaming to ${dest.name}!`, "success");
             } catch (error: any) {
+                console.error(`[DESTINATIONS] Egress error:`, error);
                 setDestinations((prev) =>
                     prev.map((d) =>
                         d.id === id
@@ -248,21 +268,34 @@ export function DestinationsPanel() {
                 );
                 addToast(`Failed to start stream: ${error.message}`, "error");
             }
-        } else if (dest.status === "live") {
-            // Stop streaming
+        } else if (dest.status === "live" && dest.egressId) {
+            // Stop streaming using LiveKit Egress
             try {
-                await apiClient.streaming.stop(id);
+                console.log(`[DESTINATIONS] Stopping egress: ${dest.egressId}`);
+                await apiClient.egress.stopStream(dest.egressId);
+
                 setDestinations((prev) =>
                     prev.map((d) =>
                         d.id === id
-                            ? { ...d, status: "idle" as const, stats: undefined }
+                            ? { ...d, status: "idle" as const, stats: undefined, egressId: undefined }
                             : d
                     )
                 );
                 addToast(`Stopped streaming to ${dest.name}`, "info");
             } catch (error: any) {
+                console.error(`[DESTINATIONS] Stop egress error:`, error);
                 addToast(`Failed to stop stream: ${error.message}`, "error");
             }
+        } else if (dest.status === "live") {
+            // No egress ID, just reset status
+            setDestinations((prev) =>
+                prev.map((d) =>
+                    d.id === id
+                        ? { ...d, status: "idle" as const, stats: undefined }
+                        : d
+                )
+            );
+            addToast(`Stopped streaming to ${dest.name}`, "info");
         }
     };
 

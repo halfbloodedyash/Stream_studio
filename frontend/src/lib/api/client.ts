@@ -328,7 +328,62 @@ class ApiClient {
                 }>("/api/streaming/youtube/go-live", { method: "POST", body: data }),
         },
     };
+
+    // LiveKit Egress endpoints for real RTMP streaming
+    egress = {
+        // Start RTMP stream to YouTube/Twitch/etc
+        startStream: (data: { roomName: string; rtmpUrl: string; streamKey: string }) =>
+            this.request<{
+                success: boolean;
+                egressId: string;
+                status: number;
+                message: string;
+                rtmpUrl: string;
+            }>("/api/livekit/egress/start-stream", { method: "POST", body: data }),
+
+        // Stop RTMP stream
+        stopStream: (egressId: string) =>
+            this.request<{
+                success: boolean;
+                egressId: string;
+                status: number;
+                message: string;
+            }>("/api/livekit/egress/stop-stream", { method: "POST", body: { egressId } }),
+
+        // List active egress sessions
+        list: (roomName?: string) =>
+            this.request<{
+                egresses: Array<{
+                    egressId: string;
+                    roomName: string;
+                    status: number;
+                    startedAt: string;
+                    endedAt?: string;
+                }>;
+            }>(`/api/livekit/egress/list${roomName ? `?roomName=${roomName}` : ""}`),
+
+        // Get egress status
+        getStatus: (egressId: string) =>
+            this.request<{
+                egressId: string;
+                roomName: string;
+                status: number;
+                startedAt: string;
+                endedAt?: string;
+                error?: string;
+            }>(`/api/livekit/egress/${egressId}`),
+
+        // Start recording
+        startRecording: (data: { roomName: string; filepath?: string }) =>
+            this.request<{
+                success: boolean;
+                egressId: string;
+                status: number;
+                message: string;
+            }>("/api/livekit/egress/start-recording", { method: "POST", body: data }),
+    };
 }
 
 export const apiClient = new ApiClient(API_BASE_URL);
 export default apiClient;
+

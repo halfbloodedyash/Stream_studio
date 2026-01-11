@@ -494,7 +494,7 @@ export default function StudioPage() {
                                     />
                                 </TabsContent>
                                 <TabsContent value="interactions" className="m-0"><PollsManager /></TabsContent>
-                                <TabsContent value="destinations" className="m-0"><DestinationsPanel /></TabsContent>
+                                <TabsContent value="destinations" className="m-0"><DestinationsPanel roomName={roomId} /></TabsContent>
                                 <TabsContent value="chat" className="m-0 -mx-5 -mb-5"><ChatPanel /></TabsContent>
                             </div>
                         </ScrollArea>
