@@ -5,12 +5,14 @@ import {
     Activity,
     Wifi,
     WifiOff,
-    HardDrive,
-    Cpu,
     Clock,
     ArrowUp,
     ArrowDown,
+    Signal,
+    Monitor,
+    Radio,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface StreamHealthProps {
     isLive: boolean;
@@ -23,6 +25,12 @@ interface StreamHealthProps {
         duration: number; // seconds
         cpuUsage?: number; // percentage
         memoryUsage?: number; // percentage
+        packetsLost?: number;
+        jitter?: number;
+        roundTripTime?: number;
+        resolution?: { width: number; height: number };
+        codec?: string;
+        isConnected?: boolean;
     };
 }
 
@@ -49,13 +57,26 @@ export function StreamHealth({ isLive, stats }: StreamHealthProps) {
     const getQualityColor = () => {
         switch (quality) {
             case "excellent":
-                return "var(--color-success)";
+                return "text-green-500";
             case "good":
-                return "#84cc16"; // lime
+                return "text-lime-500";
             case "fair":
-                return "var(--color-warning)";
+                return "text-amber-500";
             case "poor":
-                return "var(--color-error)";
+                return "text-red-500";
+        }
+    };
+
+    const getQualityBgColor = () => {
+        switch (quality) {
+            case "excellent":
+                return "bg-green-500/10 border-green-500/20";
+            case "good":
+                return "bg-lime-500/10 border-lime-500/20";
+            case "fair":
+                return "bg-amber-500/10 border-amber-500/20";
+            case "poor":
+                return "bg-red-500/10 border-red-500/20";
         }
     };
 
@@ -76,221 +97,174 @@ export function StreamHealth({ isLive, stats }: StreamHealthProps) {
         return `${mins}:${secs.toString().padStart(2, "0")}`;
     };
 
+    const formatResolution = () => {
+        if (!stats.resolution || stats.resolution.width === 0) return "N/A";
+        return `${stats.resolution.width}×${stats.resolution.height}`;
+    };
+
     return (
-        <div className="stream-health">
-            <style jsx>{`
-        .stream-health {
-          display: flex;
-          flex-direction: column;
-          gap: var(--space-3);
-          padding: var(--space-3);
-          background: var(--color-bg-tertiary);
-          border-radius: var(--radius-md);
-        }
-
-        .health-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-        }
-
-        .health-title {
-          display: flex;
-          align-items: center;
-          gap: var(--space-2);
-          font-size: var(--text-sm);
-          font-weight: var(--font-semibold);
-          color: var(--color-text-primary);
-        }
-
-        .quality-badge {
-          display: flex;
-          align-items: center;
-          gap: var(--space-1);
-          padding: 2px 8px;
-          border-radius: var(--radius-full);
-          font-size: var(--text-xs);
-          font-weight: var(--font-medium);
-          text-transform: capitalize;
-        }
-
-        .quality-dot {
-          width: 6px;
-          height: 6px;
-          border-radius: 50%;
-          animation: pulse 2s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-
-        .stats-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: var(--space-2);
-        }
-
-        .stat-item {
-          display: flex;
-          align-items: center;
-          gap: var(--space-2);
-          padding: var(--space-2);
-          background: var(--color-bg-primary);
-          border-radius: var(--radius-sm);
-        }
-
-        .stat-icon {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 28px;
-          height: 28px;
-          background: var(--color-bg-secondary);
-          border-radius: var(--radius-sm);
-          color: var(--color-text-muted);
-        }
-
-        .stat-content {
-          flex: 1;
-          min-width: 0;
-        }
-
-        .stat-label {
-          font-size: 10px;
-          color: var(--color-text-muted);
-          text-transform: uppercase;
-        }
-
-        .stat-value {
-          font-size: var(--text-sm);
-          font-weight: var(--font-medium);
-          color: var(--color-text-primary);
-          font-family: var(--font-family-mono);
-        }
-
-        .bitrate-bar {
-          height: 4px;
-          margin-top: var(--space-2);
-          background: var(--color-bg-primary);
-          border-radius: var(--radius-full);
-          overflow: hidden;
-        }
-
-        .bitrate-fill {
-          height: 100%;
-          border-radius: var(--radius-full);
-          transition: width 0.3s ease;
-        }
-
-        .offline-state {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: var(--space-2);
-          padding: var(--space-4);
-          color: var(--color-text-muted);
-        }
-
-        .offline-state p {
-          font-size: var(--text-sm);
-        }
-      `}</style>
-
-            <div className="health-header">
-                <span className="health-title">
-                    <Activity size={14} />
-                    Stream Health
-                </span>
-                {isLive && (
-                    <span
-                        className="quality-badge"
-                        style={{
-                            background: `${getQualityColor()}20`,
-                            color: getQualityColor(),
-                        }}
-                    >
-                        <span className="quality-dot" style={{ background: getQualityColor() }} />
-                        {quality}
+        <div className="flex flex-col gap-4">
+            {/* Quality Badge */}
+            <div className={cn(
+                "flex items-center justify-between p-3 rounded-xl border",
+                isLive ? getQualityBgColor() : "bg-secondary/20 border-border/40"
+            )}>
+                <div className="flex items-center gap-2">
+                    <Signal className={cn("w-4 h-4", isLive ? getQualityColor() : "text-muted-foreground")} />
+                    <span className="text-xs font-bold uppercase tracking-wider">
+                        Connection
                     </span>
-                )}
+                </div>
+                <div className={cn(
+                    "flex items-center gap-1.5 text-xs font-bold uppercase",
+                    isLive ? getQualityColor() : "text-muted-foreground"
+                )}>
+                    <span className={cn(
+                        "w-2 h-2 rounded-full",
+                        isLive ? "bg-current animate-pulse" : "bg-muted-foreground/50"
+                    )} />
+                    {isLive ? quality : "Offline"}
+                </div>
             </div>
 
             {isLive ? (
                 <>
-                    <div className="stats-grid">
-                        <div className="stat-item">
-                            <div className="stat-icon">
-                                <ArrowUp size={14} />
-                            </div>
-                            <div className="stat-content">
-                                <div className="stat-label">Bitrate</div>
-                                <div className="stat-value">{formatBitrate(stats.bitrate)}</div>
-                            </div>
-                        </div>
+                    {/* Primary Stats */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <StatCard
+                            icon={ArrowUp}
+                            label="Bitrate"
+                            value={formatBitrate(stats.bitrate)}
+                            subValue={`/ ${formatBitrate(stats.targetBitrate)}`}
+                        />
+                        <StatCard
+                            icon={Activity}
+                            label="Frame Rate"
+                            value={`${stats.fps.toFixed(1)} fps`}
+                            subValue={`/ ${stats.targetFps} fps`}
+                        />
+                        <StatCard
+                            icon={Clock}
+                            label="Duration"
+                            value={formatDuration(stats.duration)}
+                        />
+                        <StatCard
+                            icon={ArrowDown}
+                            label="Dropped"
+                            value={`${stats.droppedFrames}`}
+                            warning={stats.droppedFrames > 10}
+                        />
+                    </div>
 
-                        <div className="stat-item">
-                            <div className="stat-icon">
-                                <Activity size={14} />
-                            </div>
-                            <div className="stat-content">
-                                <div className="stat-label">Frame Rate</div>
-                                <div className="stat-value">{stats.fps.toFixed(1)} fps</div>
-                            </div>
+                    {/* Bitrate Progress Bar */}
+                    <div className="space-y-2">
+                        <div className="flex justify-between text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                            <span>Bitrate Utilization</span>
+                            <span>{Math.round((stats.bitrate / stats.targetBitrate) * 100)}%</span>
                         </div>
-
-                        <div className="stat-item">
-                            <div className="stat-icon">
-                                <Clock size={14} />
-                            </div>
-                            <div className="stat-content">
-                                <div className="stat-label">Duration</div>
-                                <div className="stat-value">{formatDuration(stats.duration)}</div>
-                            </div>
-                        </div>
-
-                        <div className="stat-item">
-                            <div className="stat-icon">
-                                <ArrowDown size={14} />
-                            </div>
-                            <div className="stat-content">
-                                <div className="stat-label">Dropped</div>
-                                <div className="stat-value">{stats.droppedFrames}</div>
-                            </div>
+                        <div className="h-2 bg-secondary/30 rounded-full overflow-hidden">
+                            <div
+                                className={cn(
+                                    "h-full rounded-full transition-all duration-500",
+                                    quality === "excellent" ? "bg-green-500" :
+                                        quality === "good" ? "bg-lime-500" :
+                                            quality === "fair" ? "bg-amber-500" : "bg-red-500"
+                                )}
+                                style={{ width: `${Math.min(100, (stats.bitrate / stats.targetBitrate) * 100)}%` }}
+                            />
                         </div>
                     </div>
 
-                    <div>
-                        <div
-                            style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                marginBottom: "4px",
-                                fontSize: "var(--text-xs)",
-                                color: "var(--color-text-muted)",
-                            }}
-                        >
-                            <span>Bitrate</span>
-                            <span>{Math.round((stats.bitrate / stats.targetBitrate) * 100)}%</span>
-                        </div>
-                        <div className="bitrate-bar">
-                            <div
-                                className="bitrate-fill"
-                                style={{
-                                    width: `${Math.min(100, (stats.bitrate / stats.targetBitrate) * 100)}%`,
-                                    background: getQualityColor(),
-                                }}
-                            />
+                    {/* Secondary Stats */}
+                    <div className="pt-2 border-t border-border/40 space-y-2">
+                        <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                            Connection Details
+                        </h4>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Resolution</span>
+                                <span className="font-mono font-medium">{formatResolution()}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Codec</span>
+                                <span className="font-mono font-medium">{stats.codec || "H.264"}</span>
+                            </div>
+                            {stats.roundTripTime !== undefined && (
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Latency</span>
+                                    <span className="font-mono font-medium">{Math.round(stats.roundTripTime)} ms</span>
+                                </div>
+                            )}
+                            {stats.jitter !== undefined && (
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Jitter</span>
+                                    <span className="font-mono font-medium">{stats.jitter.toFixed(1)} ms</span>
+                                </div>
+                            )}
+                            {stats.packetsLost !== undefined && (
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Packets Lost</span>
+                                    <span className={cn(
+                                        "font-mono font-medium",
+                                        stats.packetsLost > 100 ? "text-red-500" : ""
+                                    )}>{stats.packetsLost}</span>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </>
             ) : (
-                <div className="offline-state">
-                    <WifiOff size={24} />
-                    <p>Not streaming</p>
+                <div className="py-12 flex flex-col items-center justify-center text-center gap-4">
+                    <div className="p-4 rounded-full bg-muted/20 border border-border/40">
+                        <WifiOff className="w-8 h-8 text-muted-foreground/40" />
+                    </div>
+                    <div className="space-y-1">
+                        <p className="text-sm font-medium text-muted-foreground">Not Streaming</p>
+                        <p className="text-xs text-muted-foreground/60">
+                            Click "Go Live" to start broadcasting
+                        </p>
+                    </div>
                 </div>
             )}
+        </div>
+    );
+}
+
+// Helper component for stat cards
+function StatCard({
+    icon: Icon,
+    label,
+    value,
+    subValue,
+    warning
+}: {
+    icon: any;
+    label: string;
+    value: string;
+    subValue?: string;
+    warning?: boolean;
+}) {
+    return (
+        <div className="p-3 rounded-xl bg-secondary/20 border border-border/40">
+            <div className="flex items-center gap-2 mb-2">
+                <div className="p-1.5 rounded-lg bg-primary/10">
+                    <Icon className="w-3 h-3 text-primary" />
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    {label}
+                </span>
+            </div>
+            <div className="flex items-baseline gap-1">
+                <span className={cn(
+                    "text-lg font-bold font-mono",
+                    warning ? "text-red-500" : "text-foreground"
+                )}>{value}</span>
+                {subValue && (
+                    <span className="text-[10px] text-muted-foreground font-medium">
+                        {subValue}
+                    </span>
+                )}
+            </div>
         </div>
     );
 }

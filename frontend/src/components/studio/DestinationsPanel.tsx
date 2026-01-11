@@ -128,9 +128,19 @@ type PlatformType = keyof typeof PLATFORM_PRESETS;
 
 interface DestinationsPanelProps {
     roomName?: string; // LiveKit room name for egress
+    isLive?: boolean; // Whether the studio is currently live
+    onDestinationsChange?: (destinations: Array<{
+        id: string;
+        platform: string;
+        name: string;
+        streamKey: string;
+        streamUrl: string;
+        status: string;
+        egressId?: string;
+    }>) => void;
 }
 
-export function DestinationsPanel({ roomName }: DestinationsPanelProps) {
+export function DestinationsPanel({ roomName, isLive, onDestinationsChange }: DestinationsPanelProps) {
     const [destinations, setDestinations] = useState<Destination[]>([]);
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [selectedPlatform, setSelectedPlatform] = useState<PlatformType | null>(null);
@@ -149,6 +159,21 @@ export function DestinationsPanel({ roomName }: DestinationsPanelProps) {
     });
 
     const { addToast } = useToastStore();
+
+    // Notify parent when destinations change
+    useEffect(() => {
+        if (onDestinationsChange) {
+            onDestinationsChange(destinations.map(d => ({
+                id: d.id,
+                platform: d.platform,
+                name: d.name,
+                streamKey: d.streamKey,
+                streamUrl: d.streamUrl,
+                status: d.status,
+                egressId: d.egressId,
+            })));
+        }
+    }, [destinations, onDestinationsChange]);
 
     // Test connection before adding
     const testConnection = async () => {

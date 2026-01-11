@@ -7,6 +7,7 @@ import { useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { LayoutType } from "@/lib/types/layouts";
 import { BannerOverlay, BannerData } from "./BannerOverlay";
+import { ChatOverlay, HighlightedMessage } from "./ChatOverlay";
 
 interface StudioLayoutProps {
     onOpenSettings?: () => void;
@@ -14,6 +15,8 @@ interface StudioLayoutProps {
     isLive?: boolean;
     recordingDuration?: string;
     activeBanner?: BannerData | null;
+    highlightedMessage?: HighlightedMessage | null;
+    onDismissHighlight?: () => void;
 }
 
 export function StudioLayout({
@@ -21,7 +24,9 @@ export function StudioLayout({
     onGoLive,
     isLive = false,
     recordingDuration,
-    activeBanner
+    activeBanner,
+    highlightedMessage,
+    onDismissHighlight
 }: StudioLayoutProps) {
     const { localParticipant } = useLocalParticipant();
     const room = useRoomContext();
@@ -80,6 +85,13 @@ export function StudioLayout({
                 {activeBanner && (
                     <BannerOverlay activeBanner={activeBanner} />
                 )}
+
+                {/* Highlighted Chat Overlay */}
+                <ChatOverlay
+                    message={highlightedMessage || null}
+                    position="bottom-left"
+                    onDismiss={onDismissHighlight}
+                />
             </div>
 
             {/* Bottom Control Bar */}

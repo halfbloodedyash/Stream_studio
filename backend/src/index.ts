@@ -11,6 +11,7 @@ import destinationRoutes from "./routes/destinations";
 import assetRoutes from "./routes/assets";
 import livekitRoutes from "./routes/livekit";
 import streamingRoutes from "./routes/streaming";
+import chatRoutes from "./routes/chat";
 
 dotenv.config();
 
@@ -73,6 +74,7 @@ app.use("/api/destinations", destinationRoutes);
 app.use("/api/assets", assetRoutes);
 app.use("/api/livekit", livekitRoutes);
 app.use("/api/streaming", streamingRoutes);
+app.use("/api/chat", chatRoutes);
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {

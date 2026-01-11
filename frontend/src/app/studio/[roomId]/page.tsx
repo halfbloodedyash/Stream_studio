@@ -55,6 +55,7 @@ import { StreamHealth } from "@/components/studio/StreamHealth";
 import { apiClient } from "@/lib/api/client";
 import { signalingClient } from "@/lib/api/signaling";
 import { BannerData } from "@/components/studio/BannerOverlay";
+import { useSimulatedStats } from "@/hooks/useLiveKitStats";
 
 const LIVEKIT_URL = process.env.NEXT_PUBLIC_LIVEKIT_URL || "";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
@@ -138,17 +139,51 @@ export default function StudioPage() {
     // Right Sidebar State
     const [showRightSidebar, setShowRightSidebar] = useState(true);
 
-    // Stream Health Stats (mock for now)
-    const [streamStats] = useState({
-        bitrate: 4500,
-        targetBitrate: 6000,
-        fps: 30,
-        targetFps: 30,
-        droppedFrames: 2,
-        duration: streamTime,
-        cpuUsage: 45,
-        memoryUsage: 62,
-    });
+    // Stream Health Stats - use the hook for simulated/real stats
+    const streamStats = useSimulatedStats(isLive, streamTime);
+
+    // Destinations state for Go Live integration
+    interface Destination {
+        id: string;
+        platform: string;
+        name: string;
+        streamKey: string;
+        streamUrl: string;
+        enabled: boolean;
+        egressId?: string;
+    }
+    const [enabledDestinations, setEnabledDestinations] = useState<Destination[]>([]);
+
+    // Highlighted Chat Message (for overlay)
+    interface HighlightedMessage {
+        id: string;
+        authorName: string;
+        authorPhoto?: string;
+        message: string;
+        platform: "youtube" | "twitch" | "facebook" | "local";
+        isModerator?: boolean;
+        isOwner?: boolean;
+        expiresAt?: number;
+    }
+    const [highlightedChatMessage, setHighlightedChatMessage] = useState<HighlightedMessage | null>(null);
+
+    const handleHighlightMessage = (msg: any) => {
+        setHighlightedChatMessage({
+            ...msg,
+            expiresAt: Date.now() + 10000, // 10 seconds
+        });
+
+        // Auto-dismiss after 10 seconds
+        setTimeout(() => {
+            setHighlightedChatMessage(current =>
+                current?.id === msg.id ? null : current
+            );
+        }, 10000);
+    };
+
+    const handleDismissHighlight = () => {
+        setHighlightedChatMessage(null);
+    };
 
     // Protect the route
     useEffect(() => {
@@ -314,8 +349,23 @@ export default function StudioPage() {
 
     const handleGoLive = async () => {
         if (isLive) {
-            // End stream
+            // End stream - stop all destinations first
             try {
+                console.log("[GO LIVE] Ending stream...");
+
+                // Stop all active egress streams
+                for (const dest of enabledDestinations) {
+                    if (dest.egressId) {
+                        try {
+                            await apiClient.egress.stopStream(dest.egressId);
+                            console.log(`[GO LIVE] Stopped egress for ${dest.name}`);
+                        } catch (e) {
+                            console.error(`[GO LIVE] Failed to stop egress for ${dest.name}:`, e);
+                        }
+                    }
+                }
+                setEnabledDestinations([]);
+
                 await apiClient.rooms.end(roomId);
                 setIsLive(false);
                 addToast("Stream ended successfully", "info");
@@ -323,11 +373,17 @@ export default function StudioPage() {
                 addToast(`Failed to end stream: ${error.message}`, "error");
             }
         } else {
-            // Go live
+            // Go live - start the room and all configured destinations
             try {
+                console.log("[GO LIVE] Starting stream...");
                 await apiClient.rooms.start(roomId);
                 setIsLive(true);
                 addToast("You are now LIVE!", "success");
+
+                // Note: Destinations are started manually from the Destinations panel
+                // This is intentional - users may want to go live in the studio
+                // before starting RTMP output to platforms
+                addToast("Go to Destinations tab to start streaming to platforms", "info");
             } catch (error: any) {
                 addToast(`Failed to go live: ${error.message}`, "error");
             }
@@ -494,8 +550,26 @@ export default function StudioPage() {
                                     />
                                 </TabsContent>
                                 <TabsContent value="interactions" className="m-0"><PollsManager /></TabsContent>
-                                <TabsContent value="destinations" className="m-0"><DestinationsPanel roomName={roomId} /></TabsContent>
-                                <TabsContent value="chat" className="m-0 -mx-5 -mb-5"><ChatPanel /></TabsContent>
+                                <TabsContent value="destinations" className="m-0">
+                                    <DestinationsPanel
+                                        roomName={roomId}
+                                        isLive={isLive}
+                                        onDestinationsChange={(dests) => {
+                                            // Track destinations with egress IDs for Go Live integration
+                                            const activeWithEgress = dests.filter(d => d.egressId);
+                                            setEnabledDestinations(activeWithEgress.map(d => ({
+                                                ...d,
+                                                enabled: d.status === 'live',
+                                            })));
+                                        }}
+                                    />
+                                </TabsContent>
+                                <TabsContent value="chat" className="m-0 -mx-5 -mb-5">
+                                    <ChatPanel
+                                        roomId={roomId}
+                                        onHighlightMessage={handleHighlightMessage}
+                                    />
+                                </TabsContent>
                             </div>
                         </ScrollArea>
                     </Tabs>
@@ -547,6 +621,8 @@ export default function StudioPage() {
                                         onOpenSettings={() => setIsSettingsOpen(true)}
                                         recordingDuration={formatTime(streamTime)}
                                         activeBanner={activeBanner}
+                                        highlightedMessage={highlightedChatMessage}
+                                        onDismissHighlight={handleDismissHighlight}
                                     />
                                     <RoomAudioRenderer />
                                 </LiveKitRoom>
