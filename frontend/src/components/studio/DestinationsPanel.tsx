@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
     Wifi,
     Plus,
@@ -160,10 +160,16 @@ export function DestinationsPanel({ roomName, isLive, onDestinationsChange }: De
 
     const { addToast } = useToastStore();
 
+    // Use ref to avoid re-render loops with callback
+    const onDestinationsChangeRef = React.useRef(onDestinationsChange);
+    React.useEffect(() => {
+        onDestinationsChangeRef.current = onDestinationsChange;
+    }, [onDestinationsChange]);
+
     // Notify parent when destinations change
     useEffect(() => {
-        if (onDestinationsChange) {
-            onDestinationsChange(destinations.map(d => ({
+        if (onDestinationsChangeRef.current) {
+            onDestinationsChangeRef.current(destinations.map(d => ({
                 id: d.id,
                 platform: d.platform,
                 name: d.name,
@@ -173,7 +179,7 @@ export function DestinationsPanel({ roomName, isLive, onDestinationsChange }: De
                 egressId: d.egressId,
             })));
         }
-    }, [destinations, onDestinationsChange]);
+    }, [destinations]);
 
     // Test connection before adding
     const testConnection = async () => {
