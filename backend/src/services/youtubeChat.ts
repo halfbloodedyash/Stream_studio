@@ -69,8 +69,8 @@ export class YouTubeChatService {
                     ? new Date(item.snippet.actualStartTime)
                     : undefined,
                 concurrentViewers: parseInt(item.statistics?.concurrentViewers || "0"),
-                thumbnailUrl: item.snippet?.thumbnails?.high?.url ||
-                    item.snippet?.thumbnails?.default?.url,
+                thumbnailUrl: item.snippet?.thumbnails?.high?.url ??
+                    item.snippet?.thumbnails?.default?.url ?? undefined,
             }));
 
             console.log(`[YOUTUBE_CHAT] Found ${broadcasts.length} active broadcasts for user ${userId}`);
@@ -104,7 +104,7 @@ export class YouTubeChatService {
                 scheduledStartTime: item.snippet?.scheduledStartTime
                     ? new Date(item.snippet.scheduledStartTime)
                     : undefined,
-                thumbnailUrl: item.snippet?.thumbnails?.default?.url,
+                thumbnailUrl: item.snippet?.thumbnails?.default?.url ?? undefined,
             }));
 
         } catch (error: any) {
@@ -150,8 +150,8 @@ export class YouTubeChatService {
                 isModerator: item.authorDetails?.isChatModerator || false,
                 isOwner: item.authorDetails?.isChatOwner || false,
                 isMember: item.authorDetails?.isChatSponsor || false,
-                memberLevel: item.authorDetails?.badgeUrl || undefined,
-                superChatAmount: item.snippet?.superChatDetails?.amountDisplayString,
+                memberLevel: undefined, // badgeUrl not available in API type
+                superChatAmount: item.snippet?.superChatDetails?.amountDisplayString ?? undefined,
             }));
 
             // YouTube recommends polling at the interval they specify
