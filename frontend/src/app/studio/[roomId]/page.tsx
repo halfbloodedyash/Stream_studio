@@ -198,32 +198,25 @@ export default function StudioPage() {
 
         console.log(`[HOST] 🎬 Initializing signaling for room: ${roomId}`);
 
-        const connectSignaling = () => {
+        const connectSignaling = async () => {
             console.log(`[HOST] 🔌 Connecting to signaling server...`);
             signalingClient.connect();
 
-            // Wait for connection with retry logic
-            let attempts = 0;
-            const maxAttempts = 10;
-            const checkAndCreateRoom = setInterval(() => {
-                attempts++;
+            try {
+                // Wait for WebSocket to be OPEN and clientId to be assigned
+                const clientId = await signalingClient.waitForReady(10000);
+                console.log(`[HOST] ✅ Connected with clientId: ${clientId}. Creating room: ${roomId}`);
 
-                if (signalingClient.getClientId()) {
-                    clearInterval(checkAndCreateRoom);
-                    console.log(`[HOST] ✅ Connected! Creating room: ${roomId}`);
-                    signalingClient.send("create-room", {
-                        roomId,
-                        userId: user.id || "host",
-                        name: user.email || "Host"
-                    });
-                } else if (attempts >= maxAttempts) {
-                    clearInterval(checkAndCreateRoom);
-                    console.error(`[HOST] ❌ Failed to connect after ${maxAttempts} attempts`);
-                    addToast("Failed to connect to signaling server", "error");
-                } else {
-                    console.log(`[HOST] ⏳ Waiting for connection... attempt ${attempts}/${maxAttempts}`);
-                }
-            }, 500);
+                // Now safe to send - use queue in case of edge cases
+                signalingClient.send("create-room", {
+                    roomId,
+                    userId: user.id || "host",
+                    name: user.email || "Host"
+                }, true);
+            } catch (error) {
+                console.error(`[HOST] ❌ Failed to connect:`, error);
+                addToast("Failed to connect to signaling server", "error");
+            }
         };
 
         const onGuestWaiting = (payload: { clientId: string; name: string }) => {

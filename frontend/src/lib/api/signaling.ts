@@ -15,6 +15,7 @@ class SignalingClient extends EventEmitter {
     private isConnected: boolean = false;
     private reconnectTimer: NodeJS.Timeout | null = null;
     private clientId: string | null = null;
+    private messageQueue: Array<{ type: string; payload: any }> = [];
 
     constructor(url: string = "ws://localhost:4001") {
         super();
@@ -30,13 +31,24 @@ class SignalingClient extends EventEmitter {
             return;
         }
 
+        // Reset state for fresh connection
+        this.clientId = null;
+        this.isConnected = false;
+
         console.log(`[SIGNALING] 🔌 Attempting connection to: ${this.url}`);
 
         try {
-            this.ws = new WebSocket(this.url);
+            const ws = new WebSocket(this.url);
+            this.ws = ws;
             console.log(`[SIGNALING] 🔌 WebSocket created, waiting for open...`);
 
-            this.ws.onopen = () => {
+            ws.onopen = () => {
+                // Check if this is still the current websocket
+                if (this.ws !== ws) {
+                    console.log(`[SIGNALING] ⚠️ Stale WebSocket onopen, ignoring`);
+                    ws.close();
+                    return;
+                }
                 console.log(`[SIGNALING] ✅ Connected successfully!`);
                 this.isConnected = true;
                 this.emit("connect");
@@ -48,7 +60,10 @@ class SignalingClient extends EventEmitter {
                 }
             };
 
-            this.ws.onmessage = (event) => {
+            ws.onmessage = (event) => {
+                // Check if this is still the current websocket
+                if (this.ws !== ws) return;
+
                 try {
                     const message: SignalingMessage = JSON.parse(event.data);
                     console.log(`[SIGNALING] 📨 Received: ${message.type}`, message.payload || '');
@@ -57,6 +72,9 @@ class SignalingClient extends EventEmitter {
                     if (message.type === "connected") {
                         this.clientId = message.payload.clientId;
                         console.log(`[SIGNALING] 🆔 Assigned Client ID: ${this.clientId}`);
+
+                        // Flush message queue now that we're fully ready
+                        this.flushMessageQueue();
                     }
 
                     this.emit("message", message);
@@ -67,9 +85,13 @@ class SignalingClient extends EventEmitter {
                 }
             };
 
-            this.ws.onclose = (event) => {
+            ws.onclose = (event) => {
+                // Check if this is still the current websocket
+                if (this.ws !== ws) return;
+
                 console.log(`[SIGNALING] 🔴 Disconnected. Code: ${event.code}, Reason: ${event.reason || 'none'}`);
                 this.isConnected = false;
+                this.clientId = null;
                 this.emit("disconnect");
                 this.ws = null;
 
@@ -77,7 +99,10 @@ class SignalingClient extends EventEmitter {
                 this.scheduleReconnect();
             };
 
-            this.ws.onerror = (error) => {
+            ws.onerror = (error) => {
+                // Check if this is still the current websocket
+                if (this.ws !== ws) return;
+
                 console.error("[SIGNALING] ❌ WebSocket Error:", error);
                 console.error(`[SIGNALING] ❌ Connection to ${this.url} failed. Check if signaling server is running.`);
                 this.emit("error", error);
@@ -93,9 +118,22 @@ class SignalingClient extends EventEmitter {
         if (!this.reconnectTimer) {
             console.log(`[SIGNALING] 🔄 Scheduling reconnect in 3 seconds...`);
             this.reconnectTimer = setTimeout(() => {
+                this.reconnectTimer = null;
                 console.log("[SIGNALING] 🔄 Attempting reconnect...");
                 this.connect();
             }, 3000);
+        }
+    }
+
+    private flushMessageQueue() {
+        if (this.messageQueue.length === 0) return;
+
+        console.log(`[SIGNALING] 📬 Flushing ${this.messageQueue.length} queued messages`);
+        const queue = [...this.messageQueue];
+        this.messageQueue = [];
+
+        for (const msg of queue) {
+            this.send(msg.type, msg.payload);
         }
     }
 
@@ -109,17 +147,58 @@ class SignalingClient extends EventEmitter {
             this.ws.close();
             this.ws = null;
         }
+        this.isConnected = false;
+        this.clientId = null;
+        this.messageQueue = [];
     }
 
-    send(type: string, payload: any = {}) {
-        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-            console.warn(`[SIGNALING] ⚠️ Cannot send "${type}" - WebSocket not connected. State: ${this.ws?.readyState ?? 'null'}`);
-            return;
+    send(type: string, payload: any = {}, queue: boolean = false): boolean {
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN || !this.clientId) {
+            if (queue) {
+                console.log(`[SIGNALING] 📥 Queueing message "${type}" - not yet ready`);
+                this.messageQueue.push({ type, payload });
+                return true;
+            }
+            console.warn(`[SIGNALING] ⚠️ Cannot send "${type}" - WebSocket not ready. State: ${this.ws?.readyState ?? 'null'}, ClientId: ${this.clientId ?? 'null'}`);
+            return false;
         }
 
         const message: SignalingMessage = { type, payload };
         console.log(`[SIGNALING] 📤 Sending: ${type}`, payload);
         this.ws.send(JSON.stringify(message));
+        return true;
+    }
+
+    /**
+     * Wait for connection to be ready (WebSocket OPEN + clientId assigned)
+     * Returns a promise that resolves when connected or rejects on timeout
+     */
+    waitForReady(timeoutMs: number = 10000): Promise<string> {
+        return new Promise((resolve, reject) => {
+            // Already ready
+            if (this.isConnectedNow() && this.clientId) {
+                resolve(this.clientId);
+                return;
+            }
+
+            const startTime = Date.now();
+
+            const checkReady = () => {
+                if (this.isConnectedNow() && this.clientId) {
+                    resolve(this.clientId);
+                    return;
+                }
+
+                if (Date.now() - startTime > timeoutMs) {
+                    reject(new Error('Connection timeout'));
+                    return;
+                }
+
+                setTimeout(checkReady, 100);
+            };
+
+            checkReady();
+        });
     }
 
     getClientId() {
