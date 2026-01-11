@@ -331,8 +331,8 @@ export default function Home() {
         <div className={styles.footerBottom}>
           <div className={styles.footerLegal}>
             <span>© 2024 StreamStudio. All rights reserved.</span>
-            <a href="#">Privacy Policy</a>
-            <a href="#">Terms of Service</a>
+            <Link href="/privacy">Privacy Policy</Link>
+            <Link href="/terms">Terms of Service</Link>
           </div>
           <div className={styles.footerSocial}>
             <a href="#" aria-label="Twitter">
