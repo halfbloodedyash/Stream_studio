@@ -176,6 +176,158 @@ class ApiClient {
 
         delete: (id: string) => this.request<{ success: boolean }>(`/api/assets/${id}`, { method: "DELETE" }),
     };
+
+    // Streaming endpoints for RTMP/YouTube Live
+    streaming = {
+        // Get all supported platforms and their configurations
+        getPlatforms: () =>
+            this.request<{
+                platforms: Array<{
+                    id: string;
+                    name: string;
+                    primaryUrl: string;
+                    backupUrl: string | null;
+                    recommendedBitrate: { min: number; max: number };
+                    recommendedResolution: string;
+                    maxKeyframeInterval: number;
+                    supportedCodecs: string[];
+                    supportsBackupStream: boolean;
+                    helpUrl: string;
+                    features: {
+                        lowLatency: boolean;
+                        ultraLowLatency: boolean;
+                        dvr: boolean;
+                        captions: boolean;
+                    };
+                }>;
+            }>("/api/streaming/platforms"),
+
+        // Get configuration for a specific platform
+        getPlatform: (platform: string) =>
+            this.request<{
+                id: string;
+                name: string;
+                primaryUrl: string;
+                backupUrl: string | null;
+                recommendedBitrate: { min: number; max: number };
+                features: Record<string, boolean>;
+            }>(`/api/streaming/platforms/${platform}`),
+
+        // Validate stream key format
+        validateKey: (data: { platform: string; streamKey: string }) =>
+            this.request<{
+                valid: boolean;
+                platform: string;
+                message: string;
+            }>("/api/streaming/validate-key", { method: "POST", body: data }),
+
+        // Test RTMP connection
+        testConnection: (data: { platform: string; streamKey: string; rtmpUrl?: string }) =>
+            this.request<{
+                success: boolean;
+                latency?: number;
+                error?: string;
+                serverInfo?: string;
+                platform: { name: string; features: Record<string, boolean> };
+            }>("/api/streaming/test-connection", { method: "POST", body: data }),
+
+        // Start streaming to a destination
+        start: (destinationId: string, inputSource?: string) =>
+            this.request<{
+                success: boolean;
+                message: string;
+                destinationId: string;
+            }>("/api/streaming/start", {
+                method: "POST",
+                body: { destinationId, inputSource },
+            }),
+
+        // Stop streaming to a destination
+        stop: (destinationId: string) =>
+            this.request<{
+                success: boolean;
+                message: string;
+                destinationId: string;
+            }>("/api/streaming/stop", {
+                method: "POST",
+                body: { destinationId },
+            }),
+
+        // Get status of a specific stream
+        getStatus: (destinationId: string) =>
+            this.request<{
+                destinationId: string;
+                status: "idle" | "connecting" | "live" | "error" | "reconnecting";
+                error?: string;
+                stats?: {
+                    bitrate: number;
+                    fps: number;
+                    droppedFrames: number;
+                    duration: number;
+                    bytesTransferred: number;
+                    connectionQuality: "excellent" | "good" | "fair" | "poor";
+                };
+                startedAt?: string;
+            }>(`/api/streaming/status/${destinationId}`),
+
+        // Get all active streams
+        getActive: () =>
+            this.request<{
+                streams: Array<{
+                    destinationId: string;
+                    status: string;
+                    stats?: Record<string, any>;
+                }>;
+            }>("/api/streaming/active"),
+
+        // Stop all active streams
+        stopAll: () =>
+            this.request<{ success: boolean; message: string }>("/api/streaming/stop-all", {
+                method: "POST",
+            }),
+
+        // YouTube-specific endpoints
+        youtube: {
+            // Get YouTube streaming recommendations
+            getSettings: () =>
+                this.request<{
+                    platform: string;
+                    name: string;
+                    rtmpServers: { primary: string; backup: string };
+                    recommendedSettings: {
+                        video: Record<string, string>;
+                        audio: Record<string, string>;
+                    };
+                    features: Record<string, boolean>;
+                    tips: string[];
+                    helpUrl: string;
+                }>("/api/streaming/youtube/settings"),
+
+            // Start YouTube Live stream
+            goLive: (data: {
+                streamKey: string;
+                title?: string;
+                description?: string;
+                privacy?: "public" | "unlisted" | "private";
+                enableDvr?: boolean;
+                enableLowLatency?: boolean;
+                inputSource?: string;
+            }) =>
+                this.request<{
+                    success: boolean;
+                    message: string;
+                    destination: {
+                        id: string;
+                        platform: string;
+                        rtmpUrl: string;
+                        name: string;
+                    };
+                    streamUrl: string;
+                    embedUrl: string;
+                    connectionLatency?: number;
+                }>("/api/streaming/youtube/go-live", { method: "POST", body: data }),
+        },
+    };
 }
 
 export const apiClient = new ApiClient(API_BASE_URL);
