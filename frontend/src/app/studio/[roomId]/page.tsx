@@ -126,6 +126,13 @@ export default function StudioPage() {
     const [tokenError, setTokenError] = useState<string | null>(null);
     const [isConnecting, setIsConnecting] = useState(true);
 
+    // Media Device State
+    const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
+    const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
+    const [selectedAudioDevice, setSelectedAudioDevice] = useState<string>("");
+    const [selectedVideoDevice, setSelectedVideoDevice] = useState<string>("");
+    const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+
     // Guest Management State
     const [waitingGuests, setWaitingGuests] = useState<Array<{ clientId: string; name: string }>>([]);
 
@@ -191,6 +198,49 @@ export default function StudioPage() {
             router.push("/login");
         }
     }, [user, loading, router]);
+
+    // Enumerate media devices when settings modal opens
+    useEffect(() => {
+        if (!isSettingsOpen) return;
+
+        const enumerateDevices = async () => {
+            try {
+                // Request permissions first to get proper device labels
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+                setLocalStream(stream);
+
+                const devices = await navigator.mediaDevices.enumerateDevices();
+
+                const audioInputs = devices.filter(d => d.kind === "audioinput");
+                const videoInputs = devices.filter(d => d.kind === "videoinput");
+
+                setAudioDevices(audioInputs);
+                setVideoDevices(videoInputs);
+
+                // Set defaults if not already set
+                if (!selectedAudioDevice && audioInputs.length > 0) {
+                    setSelectedAudioDevice(audioInputs[0].deviceId);
+                }
+                if (!selectedVideoDevice && videoInputs.length > 0) {
+                    setSelectedVideoDevice(videoInputs[0].deviceId);
+                }
+
+                console.log(`[DEVICES] Found ${audioInputs.length} mics, ${videoInputs.length} cameras`);
+            } catch (error) {
+                console.error("[DEVICES] Failed to enumerate devices:", error);
+                addToast("Please allow camera and microphone access", "error");
+            }
+        };
+
+        enumerateDevices();
+
+        // Cleanup stream when modal closes
+        return () => {
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+            }
+        };
+    }, [isSettingsOpen]);
 
     // Initialize Signaling
     useEffect(() => {
@@ -692,14 +742,21 @@ export default function StudioPage() {
             {/* Settings Modal */}
             <SettingsModal
                 isOpen={isSettingsOpen}
-                onClose={() => setIsSettingsOpen(false)}
-                audioDevices={[]}
-                videoDevices={[]}
-                selectedAudioDevice=""
-                selectedVideoDevice=""
-                onAudioDeviceChange={() => { }}
-                onVideoDeviceChange={() => { }}
-                localStream={null}
+                onClose={() => {
+                    setIsSettingsOpen(false);
+                    // Stop the stream when modal closes
+                    if (localStream) {
+                        localStream.getTracks().forEach(track => track.stop());
+                        setLocalStream(null);
+                    }
+                }}
+                audioDevices={audioDevices}
+                videoDevices={videoDevices}
+                selectedAudioDevice={selectedAudioDevice}
+                selectedVideoDevice={selectedVideoDevice}
+                onAudioDeviceChange={setSelectedAudioDevice}
+                onVideoDeviceChange={setSelectedVideoDevice}
+                localStream={localStream}
             />
         </div>
     );

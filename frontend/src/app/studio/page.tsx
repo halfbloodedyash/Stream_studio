@@ -25,16 +25,16 @@ export default function StudioCallbackPage() {
             // Notify parent window if this is a popup
             if (window.opener) {
                 window.opener.postMessage({ type: "youtube-connected", success: true }, "*");
-                // Close popup after a short delay
-                setTimeout(() => {
-                    window.close();
-                }, 1500);
-            } else {
-                // If not a popup, redirect to dashboard
-                setTimeout(() => {
-                    router.push("/dashboard");
-                }, 2000);
             }
+
+            // Always redirect to dashboard after delay
+            setTimeout(() => {
+                if (window.opener) {
+                    window.close();
+                } else {
+                    router.push("/dashboard");
+                }
+            }, 2000);
         } else if (youtubeError) {
             setStatus("error");
             setMessage(`Connection failed: ${youtubeError}`);
@@ -42,18 +42,18 @@ export default function StudioCallbackPage() {
             // Notify parent window if this is a popup
             if (window.opener) {
                 window.opener.postMessage({ type: "youtube-connected", success: false, error: youtubeError }, "*");
-                // Close popup after a short delay
-                setTimeout(() => {
-                    window.close();
-                }, 3000);
-            } else {
-                // If not a popup, redirect to dashboard
-                setTimeout(() => {
-                    router.push("/dashboard");
-                }, 3000);
             }
+
+            // Always redirect to dashboard after delay
+            setTimeout(() => {
+                if (window.opener) {
+                    window.close();
+                } else {
+                    router.push("/dashboard");
+                }
+            }, 3000);
         } else {
-            // No query params - redirect to dashboard
+            // No query params - redirect to dashboard immediately
             router.push("/dashboard");
         }
     }, [searchParams, router]);
@@ -63,8 +63,8 @@ export default function StudioCallbackPage() {
             <div className="max-w-md w-full bg-card rounded-2xl border border-border shadow-xl p-8 text-center">
                 {/* YouTube Logo */}
                 <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-6 ${status === "success" ? "bg-green-500/20" :
-                        status === "error" ? "bg-red-500/20" :
-                            "bg-red-500/20"
+                    status === "error" ? "bg-red-500/20" :
+                        "bg-red-500/20"
                     }`}>
                     {status === "loading" ? (
                         <Loader2 className="w-8 h-8 text-red-500 animate-spin" />
