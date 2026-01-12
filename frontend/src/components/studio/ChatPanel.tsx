@@ -84,6 +84,22 @@ export function ChatPanel({ roomId, onHighlightMessage }: ChatPanelProps) {
   // Check YouTube connection status on mount
   useEffect(() => {
     checkConnectionStatus();
+
+    // Listen for OAuth popup completion
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === "youtube-connected") {
+        if (event.data.success) {
+          addToast("YouTube connected successfully!", "success");
+          checkConnectionStatus();
+        } else {
+          addToast(`YouTube connection failed: ${event.data.error}`, "error");
+        }
+        setIsConnecting(false);
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
   }, []);
 
   // Auto-scroll to bottom when new messages arrive
@@ -137,8 +153,29 @@ export function ChatPanel({ roomId, onHighlightMessage }: ChatPanelProps) {
       });
       const data = await response.json();
 
-      // Redirect to YouTube OAuth
-      window.location.href = data.authUrl;
+      // Open OAuth in a popup window instead of redirecting
+      const width = 600;
+      const height = 700;
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2;
+
+      const popup = window.open(
+        data.authUrl,
+        "YouTube OAuth",
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+      );
+
+      // Poll to check if popup was closed without completing
+      const pollTimer = setInterval(() => {
+        if (popup?.closed) {
+          clearInterval(pollTimer);
+          // Give a moment for the message to arrive
+          setTimeout(() => {
+            setIsConnecting(false);
+          }, 1000);
+        }
+      }, 500);
+
     } catch (error) {
       console.error("[CHAT] Failed to initiate connection:", error);
       addToast("Failed to connect to YouTube", "error");

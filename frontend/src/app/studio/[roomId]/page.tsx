@@ -543,7 +543,7 @@ export default function StudioPage() {
                                     />
                                 </TabsContent>
                                 <TabsContent value="interactions" className="m-0"><PollsManager /></TabsContent>
-                                <TabsContent value="destinations" className="m-0">
+                                <TabsContent value="destinations" forceMount className={`m-0 ${activeTab !== "destinations" ? "hidden" : ""}`}>
                                     <DestinationsPanel
                                         roomName={roomId}
                                         isLive={isLive}
@@ -557,7 +557,7 @@ export default function StudioPage() {
                                         }}
                                     />
                                 </TabsContent>
-                                <TabsContent value="chat" className="m-0 -mx-5 -mb-5">
+                                <TabsContent value="chat" forceMount className={`m-0 -mx-5 -mb-5 ${activeTab !== "chat" ? "hidden" : ""}`}>
                                     <ChatPanel
                                         roomId={roomId}
                                         onHighlightMessage={handleHighlightMessage}
