@@ -53,10 +53,11 @@ router.post("/token", authMiddleware, async (req: Request, res: Response) => {
             return res.status(500).json({ error: "LiveKit not configured" });
         }
 
-        // Create access token
+        // Create access token with 24 hour TTL for stability
         const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
             identity: userId || participantName,
             name: participantName,
+            ttl: "24h", // 24 hours to prevent reconnection issues
         });
 
         // Grant room permissions
@@ -100,10 +101,11 @@ router.post("/guest-token", async (req: Request, res: Response) => {
             return res.status(500).json({ error: "LiveKit not configured" });
         }
 
-        // Create access token for guest
+        // Create access token for guest with 6 hour TTL
         const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
             identity: `guest_${Date.now()}_${participantName}`,
             name: participantName,
+            ttl: "6h", // 6 hours for guests
         });
 
         // Grant limited room permissions for guests

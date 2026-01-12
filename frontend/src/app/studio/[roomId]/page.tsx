@@ -657,6 +657,24 @@ export default function StudioPage() {
                                     video={true}
                                     audio={true}
                                     className="h-full w-full"
+                                    options={{
+                                        adaptiveStream: false,
+                                        dynacast: true,
+                                        stopLocalTrackOnUnpublish: true,
+                                        disconnectOnPageLeave: true,
+                                        reconnectPolicy: {
+                                            maxRetries: 10,
+                                            nextRetryDelayInMs: (context) => {
+                                                // Exponential backoff with max 30 seconds
+                                                const delay = Math.min(30000, 1000 * Math.pow(2, context.retryCount));
+                                                console.log(`[LIVEKIT] Reconnect attempt ${context.retryCount + 1}, waiting ${delay}ms`);
+                                                return delay;
+                                            },
+                                        },
+                                    }}
+                                    onConnected={() => console.log("[LIVEKIT] Connected to room")}
+                                    onDisconnected={() => console.log("[LIVEKIT] Disconnected from room")}
+                                    onError={(error) => console.error("[LIVEKIT] Room error:", error)}
                                 >
                                     <StudioLayout
                                         isLive={isLive}
