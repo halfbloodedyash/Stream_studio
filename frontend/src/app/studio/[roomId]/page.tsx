@@ -661,10 +661,14 @@ export default function StudioPage() {
                                         adaptiveStream: false,
                                         dynacast: true,
                                         stopLocalTrackOnUnpublish: true,
-                                        disconnectOnPageLeave: true,
+                                        disconnectOnPageLeave: false,
                                         reconnectPolicy: {
-                                            maxRetries: 10,
                                             nextRetryDelayInMs: (context) => {
+                                                // Stop retrying after 10 attempts
+                                                if (context.retryCount >= 10) {
+                                                    console.log(`[LIVEKIT] Max retries (10) exceeded, stopping reconnection`);
+                                                    return null;
+                                                }
                                                 // Exponential backoff with max 30 seconds
                                                 const delay = Math.min(30000, 1000 * Math.pow(2, context.retryCount));
                                                 console.log(`[LIVEKIT] Reconnect attempt ${context.retryCount + 1}, waiting ${delay}ms`);
