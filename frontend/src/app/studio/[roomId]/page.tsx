@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useParams, useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import {
     Video,
     Settings,
@@ -21,6 +22,7 @@ import {
     Wifi,
     PanelRightOpen,
     PanelRightClose,
+    LogOut,
 } from "lucide-react";
 import {
     LiveKitRoom,
@@ -38,26 +40,48 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-// App Components & Logic
+// Core Components (loaded immediately)
 import { BackgroundEffects } from "@/components/ui/BackgroundEffects";
-import { BrandSettings } from "@/components/studio/BrandSettings";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToastStore } from "@/stores/toastStore";
 import { useStudioStore } from "@/stores/studioStore";
-import { PollsManager } from "@/components/studio/PollsManager";
-import { BannersManager } from "@/components/studio/BannersManager";
-import { GuestManagement } from "@/components/studio/GuestManagement";
-import { SettingsModal } from "@/components/studio/SettingsModal";
 import { StudioLayout } from "@/components/studio/StudioLayout";
-import { ChatPanel } from "@/components/studio/ChatPanel";
-import { SceneManager } from "@/components/studio/SceneManager";
-import { CreateSceneModal } from "@/components/studio/CreateSceneModal";
-import { DestinationsPanel } from "@/components/studio/DestinationsPanel";
-import { StreamHealth } from "@/components/studio/StreamHealth";
 import { apiClient } from "@/lib/api/client";
 import { signalingClient } from "@/lib/api/signaling";
 import { BannerData } from "@/components/studio/BannerOverlay";
 import { useSimulatedStats } from "@/hooks/useLiveKitStats";
+
+// Lazy-loaded Components (reduces initial bundle)
+const SettingsModal = dynamic(() => import("@/components/studio/SettingsModal").then(mod => ({ default: mod.SettingsModal })), {
+    loading: () => null,
+});
+const CreateSceneModal = dynamic(() => import("@/components/studio/CreateSceneModal").then(mod => ({ default: mod.CreateSceneModal })), {
+    loading: () => null,
+});
+const BrandSettings = dynamic(() => import("@/components/studio/BrandSettings").then(mod => ({ default: mod.BrandSettings })), {
+    loading: () => <Skeleton className="h-40 w-full" />,
+});
+const PollsManager = dynamic(() => import("@/components/studio/PollsManager").then(mod => ({ default: mod.PollsManager })), {
+    loading: () => <Skeleton className="h-40 w-full" />,
+});
+const BannersManager = dynamic(() => import("@/components/studio/BannersManager").then(mod => ({ default: mod.BannersManager })), {
+    loading: () => <Skeleton className="h-40 w-full" />,
+});
+const GuestManagement = dynamic(() => import("@/components/studio/GuestManagement").then(mod => ({ default: mod.GuestManagement })), {
+    loading: () => <Skeleton className="h-40 w-full" />,
+});
+const ChatPanel = dynamic(() => import("@/components/studio/ChatPanel").then(mod => ({ default: mod.ChatPanel })), {
+    loading: () => <Skeleton className="h-full w-full" />,
+});
+const SceneManager = dynamic(() => import("@/components/studio/SceneManager").then(mod => ({ default: mod.SceneManager })), {
+    loading: () => <Skeleton className="h-40 w-full" />,
+});
+const DestinationsPanel = dynamic(() => import("@/components/studio/DestinationsPanel").then(mod => ({ default: mod.DestinationsPanel })), {
+    loading: () => <Skeleton className="h-40 w-full" />,
+});
+const StreamHealth = dynamic(() => import("@/components/studio/StreamHealth").then(mod => ({ default: mod.StreamHealth })), {
+    loading: () => <Skeleton className="h-20 w-full" />,
+});
 
 const LIVEKIT_URL = process.env.NEXT_PUBLIC_LIVEKIT_URL || "";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
@@ -152,6 +176,9 @@ export default function StudioPage() {
     // Right Sidebar State
     const [showRightSidebar, setShowRightSidebar] = useState(true);
 
+    // Tab visibility warning
+    const [isTabHidden, setIsTabHidden] = useState(false);
+
     // Stream Health Stats - use the hook for simulated/real stats
     const streamStats = useSimulatedStats(isLive, streamTime);
 
@@ -204,6 +231,15 @@ export default function StudioPage() {
             router.push("/login");
         }
     }, [user, loading, router]);
+
+    // Tab visibility warning
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            setIsTabHidden(document.hidden);
+        };
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+        return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+    }, []);
 
     // Enumerate media devices when settings modal opens
     useEffect(() => {
@@ -478,7 +514,29 @@ export default function StudioPage() {
             {/* Header */}
             <header className="flex items-center justify-between h-[var(--header-height)] px-6 bg-card border-b border-border shadow-sm z-50">
                 {/* Left Section */}
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-4">
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="rounded-xl hover:bg-destructive/10 hover:text-destructive"
+                                onClick={() => {
+                                    if (isLive) {
+                                        if (confirm("You are currently live. Are you sure you want to exit?")) {
+                                            router.push("/dashboard");
+                                        }
+                                    } else {
+                                        router.push("/dashboard");
+                                    }
+                                }}
+                            >
+                                <LogOut className="w-4 h-4" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Exit Studio</TooltipContent>
+                    </Tooltip>
+
                     <div className="flex items-center gap-2.5">
                         <div className="bg-primary/20 p-2 rounded-xl">
                             <Video className="text-primary w-6 h-6" />
@@ -549,8 +607,8 @@ export default function StudioPage() {
             {/* Main Studio Content */}
             <div className="flex flex-1 overflow-hidden">
                 {/* Left Sidebar: Controls & Assets */}
-                <aside className="w-[var(--sidebar-width)] flex flex-col bg-card border-r border-border shrink-0 z-40">
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
+                <aside className="w-[var(--sidebar-width)] flex flex-col bg-card border-r border-border shrink-0 z-40 overflow-hidden">
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full overflow-hidden">
                         <div className="p-4 border-b border-border/60">
                             <TabsList className="grid grid-cols-7 h-12 bg-secondary/30 p-1 rounded-xl">
                                 <TabsTrigger value="scenes" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm"><Layers className="w-4 h-4" /></TabsTrigger>
@@ -563,8 +621,8 @@ export default function StudioPage() {
                             </TabsList>
                         </div>
 
-                        <ScrollArea className="flex-1">
-                            <div className="p-5">
+                        <ScrollArea className="flex-1 min-h-0">
+                            <div className="p-5 pb-10">
                                 <TabsContent value="scenes" className="m-0 space-y-4">
                                     <SceneManager
                                         scenes={scenes.map(s => ({ ...s, isActive: s.id === activeSceneId, sources: s.sources.map(src => ({ id: src.id, type: src.type, name: src.type })) }))}
@@ -665,10 +723,15 @@ export default function StudioPage() {
                                     audio={true}
                                     className="h-full w-full"
                                     options={{
-                                        adaptiveStream: false,
+                                        adaptiveStream: true, // Helps maintain stream when tab is hidden
                                         dynacast: true,
                                         stopLocalTrackOnUnpublish: true,
                                         disconnectOnPageLeave: false,
+                                        // Prevent media from stopping when tab loses focus
+                                        publishDefaults: {
+                                            stopMicTrackOnMute: false,
+                                            videoSimulcastLayers: [],
+                                        },
                                         reconnectPolicy: {
                                             nextRetryDelayInMs: (context) => {
                                                 // Stop retrying after 10 attempts
@@ -710,6 +773,19 @@ export default function StudioPage() {
                                 <Badge variant="secondary" className="bg-black/40 backdrop-blur-md border-white/5 text-white/80 py-1.5 px-4 rounded-xl font-semibold tracking-wide uppercase text-[10px]">
                                     Preview Mode
                                 </Badge>
+                            </div>
+                        )}
+
+                        {/* Tab Hidden Warning */}
+                        {isTabHidden && isLive && (
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 animate-in fade-in zoom-in-95 duration-300">
+                                <div className="bg-destructive/95 backdrop-blur-xl text-destructive-foreground px-6 py-4 rounded-2xl shadow-2xl border border-red-500/20 flex items-center gap-3">
+                                    <div className="w-3 h-3 rounded-full bg-white animate-pulse" />
+                                    <div>
+                                        <p className="font-bold text-sm">Tab is Hidden</p>
+                                        <p className="text-xs opacity-80">Stream may be affected. Keep this tab active.</p>
+                                    </div>
+                                </div>
                             </div>
                         )}
 
