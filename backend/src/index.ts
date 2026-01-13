@@ -42,9 +42,6 @@ app.use(cors({
         // Check allowed origins list
         if (allowedOrigins.includes(origin)) return callback(null, true);
 
-        // In production, be more permissive for debugging
-        if (process.env.NODE_ENV === 'production') return callback(null, true);
-
         callback(new Error('Not allowed by CORS'));
     },
     credentials: true,
