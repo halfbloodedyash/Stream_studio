@@ -50,6 +50,8 @@ import { GuestManagement } from "@/components/studio/GuestManagement";
 import { SettingsModal } from "@/components/studio/SettingsModal";
 import { StudioLayout } from "@/components/studio/StudioLayout";
 import { ChatPanel } from "@/components/studio/ChatPanel";
+import { SceneManager } from "@/components/studio/SceneManager";
+import { CreateSceneModal } from "@/components/studio/CreateSceneModal";
 import { DestinationsPanel } from "@/components/studio/DestinationsPanel";
 import { StreamHealth } from "@/components/studio/StreamHealth";
 import { apiClient } from "@/lib/api/client";
@@ -117,11 +119,15 @@ export default function StudioPage() {
     const roomId = params.roomId as string;
     const { user, loading } = useAuth();
     const { addToast } = useToastStore();
-    const { isLive, setIsLive, streamTime, incrementStreamTime } = useStudioStore();
+    const {
+        isLive, setIsLive, streamTime, incrementStreamTime,
+        scenes, activeSceneId, setActiveScene, addScene, removeScene, updateScene
+    } = useStudioStore();
 
     const [activeTab, setActiveTab] = useState("scenes");
     const [copied, setCopied] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [isCreateSceneOpen, setIsCreateSceneOpen] = useState(false);
     const [token, setToken] = useState<string | null>(null);
     const [tokenError, setTokenError] = useState<string | null>(null);
     const [isConnecting, setIsConnecting] = useState(true);
@@ -560,14 +566,15 @@ export default function StudioPage() {
                         <ScrollArea className="flex-1">
                             <div className="p-5">
                                 <TabsContent value="scenes" className="m-0 space-y-4">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Scenes</h3>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7"><Plus className="w-4 h-4" /></Button>
-                                    </div>
-                                    <div className="bg-secondary/40 rounded-xl p-6 border border-dashed border-border flex flex-col items-center text-center gap-3">
-                                        <Monitor className="w-8 h-8 text-foreground/50" />
-                                        <p className="text-xs text-foreground/80 leading-relaxed font-medium">Scenes are managed automatically via LiveKit active speakers.</p>
-                                    </div>
+                                    <SceneManager
+                                        scenes={scenes.map(s => ({ ...s, isActive: s.id === activeSceneId, sources: s.sources.map(src => ({ id: src.id, type: src.type, name: src.type })) }))}
+                                        activeSceneId={activeSceneId}
+                                        onSelectScene={setActiveScene}
+                                        onAddScene={() => setIsCreateSceneOpen(true)}
+                                        onRemoveScene={removeScene}
+                                        onRenameScene={(id, name) => updateScene(id, { name })}
+                                        onChangeLayout={(id, layout) => updateScene(id, { layout })}
+                                    />
                                 </TabsContent>
 
                                 <TabsContent value="guests" className="m-0 space-y-6">
@@ -688,6 +695,9 @@ export default function StudioPage() {
                                         activeBanner={activeBanner}
                                         highlightedMessage={highlightedChatMessage}
                                         onDismissHighlight={handleDismissHighlight}
+                                        activeLayout={scenes.find(s => s.id === activeSceneId)?.layout || "solo"}
+                                        sources={scenes.find(s => s.id === activeSceneId)?.sources || []}
+                                        onSourcesChange={(newSources) => updateScene(activeSceneId, { sources: newSources })}
                                     />
                                     <RoomAudioRenderer />
                                 </LiveKitRoom>
@@ -779,6 +789,23 @@ export default function StudioPage() {
                 onAudioDeviceChange={setSelectedAudioDevice}
                 onVideoDeviceChange={setSelectedVideoDevice}
                 localStream={localStream}
+            />
+
+            {/* Create Scene Modal */}
+            <CreateSceneModal
+                isOpen={isCreateSceneOpen}
+                onClose={() => setIsCreateSceneOpen(false)}
+                onCreate={(sceneData) => {
+                    const newScene = {
+                        id: `scene-${Date.now()}`,
+                        name: sceneData.name,
+                        layout: sceneData.layout,
+                        sources: [],
+                    };
+                    addScene(newScene);
+                    setActiveScene(newScene.id);
+                    addToast(`Scene "${sceneData.name}" created`, "success");
+                }}
             />
         </div>
     );

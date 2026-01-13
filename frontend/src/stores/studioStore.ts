@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { LayoutType } from "@/lib/types/layouts";
 
 interface StudioState {
     // Stream state
@@ -9,6 +10,7 @@ interface StudioState {
     // Scene state
     activeSceneId: string;
     scenes: Scene[];
+    isEditMode: boolean;
 
     // UI state
     activeSidebarTab: "scenes" | "guests" | "comments";
@@ -23,24 +25,24 @@ interface StudioState {
     addScene: (scene: Scene) => void;
     removeScene: (sceneId: string) => void;
     updateScene: (sceneId: string, updates: Partial<Scene>) => void;
+    updateSceneSources: (sceneId: string, sources: Source[]) => void;
+    setEditMode: (isEditMode: boolean) => void;
     setSidebarTab: (tab: "scenes" | "guests" | "comments") => void;
     setRightPanelTab: (tab: "comments" | "destinations") => void;
 }
 
-interface Scene {
+export interface Scene {
     id: string;
     name: string;
     layout: LayoutType;
     sources: Source[];
 }
 
-interface Source {
+export interface Source {
     id: string;
     type: "camera" | "screen" | "image" | "video";
     position: { x: number; y: number; width: number; height: number };
 }
-
-type LayoutType = "solo" | "duo" | "trio" | "quad" | "grid" | "pip" | "sidebar";
 
 export const useStudioStore = create<StudioState>((set) => ({
     // Initial state
@@ -64,6 +66,7 @@ export const useStudioStore = create<StudioState>((set) => ({
     ],
     activeSidebarTab: "scenes",
     activeRightPanelTab: "comments",
+    isEditMode: false,
 
     // Actions
     setIsLive: (isLive) =>
@@ -105,4 +108,13 @@ export const useStudioStore = create<StudioState>((set) => ({
     setSidebarTab: (tab) => set({ activeSidebarTab: tab }),
 
     setRightPanelTab: (tab) => set({ activeRightPanelTab: tab }),
+
+    updateSceneSources: (sceneId, sources) =>
+        set((state) => ({
+            scenes: state.scenes.map((s) =>
+                s.id === sceneId ? { ...s, sources } : s
+            ),
+        })),
+
+    setEditMode: (isEditMode) => set({ isEditMode }),
 }));
