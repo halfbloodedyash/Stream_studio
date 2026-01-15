@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, memo } from "react";
 import {
   Youtube,
   Send,
@@ -60,6 +60,93 @@ interface ChatPanelProps {
   onHighlightMessage?: (message: ChatMessage) => void;
 }
 
+// Memoized message item to prevent re-renders when parent state changes
+const ChatMessageItem = memo(function ChatMessageItem({
+  msg,
+  onHighlight
+}: {
+  msg: ChatMessage;
+  onHighlight: (msg: ChatMessage) => void;
+}) {
+  return (
+    <div
+      className="group flex gap-3 hover:bg-muted/20 p-2 rounded-xl transition-colors cursor-pointer"
+      onClick={() => onHighlight(msg)}
+    >
+      {/* Author Photo */}
+      {msg.authorPhoto ? (
+        <img
+          src={msg.authorPhoto}
+          alt={msg.authorName}
+          className="w-8 h-8 rounded-full border border-border/40 shrink-0"
+        />
+      ) : (
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/50 to-primary/30 flex items-center justify-center text-white text-xs font-bold shrink-0">
+          {msg.authorName.charAt(0).toUpperCase()}
+        </div>
+      )}
+
+      <div className="flex-1 min-w-0">
+        {/* Author name + badges */}
+        <div className="flex items-center gap-1.5 mb-0.5">
+          <span className="text-xs font-bold text-foreground truncate">
+            {msg.authorName}
+          </span>
+          {msg.isOwner && (
+            <Crown className="w-3 h-3 text-amber-400" />
+          )}
+          {msg.isModerator && (
+            <Shield className="w-3 h-3 text-blue-400" />
+          )}
+          {msg.isMember && (
+            <Star className="w-3 h-3 text-green-400" />
+          )}
+          {msg.platform === "youtube" && (
+            <Youtube className="w-3 h-3 text-red-500" />
+          )}
+          {msg.superChatAmount && (
+            <Badge className="h-4 text-[8px] bg-amber-500 text-black px-1.5">
+              {msg.superChatAmount}
+            </Badge>
+          )}
+        </div>
+
+        {/* Message text */}
+        <p className="text-xs text-foreground/80 leading-relaxed break-words">
+          {msg.message}
+        </p>
+
+        {/* Timestamp */}
+        <span className="text-[9px] text-muted-foreground/50 mt-1 block">
+          {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </span>
+      </div>
+
+      {/* Highlight button (visible on hover) */}
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 text-amber-500 hover:text-amber-400 hover:bg-amber-500/10"
+              onClick={(e) => {
+                e.stopPropagation();
+                onHighlight(msg);
+              }}
+            >
+              <Sparkles className="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="left">
+            <p className="text-xs">Show on stream</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </div>
+  );
+});
+
 export function ChatPanel({ roomId, onHighlightMessage }: ChatPanelProps) {
   // YouTube connection state
   const [isConnected, setIsConnected] = useState(false);
@@ -107,7 +194,7 @@ export function ChatPanel({ roomId, onHighlightMessage }: ChatPanelProps) {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages.length]); // Only scroll when count changes, not on every message update
 
   // Clean up polling on unmount
   useEffect(() => {
@@ -456,82 +543,11 @@ export function ChatPanel({ roomId, onHighlightMessage }: ChatPanelProps) {
             </div>
           ) : (
             messages.map((msg) => (
-              <div
+              <ChatMessageItem
                 key={msg.id}
-                className="group flex gap-3 hover:bg-muted/20 p-2 rounded-xl transition-colors cursor-pointer"
-                onClick={() => handleHighlight(msg)}
-              >
-                {/* Author Photo */}
-                {msg.authorPhoto ? (
-                  <img
-                    src={msg.authorPhoto}
-                    alt={msg.authorName}
-                    className="w-8 h-8 rounded-full border border-border/40 shrink-0"
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/50 to-primary/30 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                    {msg.authorName.charAt(0).toUpperCase()}
-                  </div>
-                )}
-
-                <div className="flex-1 min-w-0">
-                  {/* Author name + badges */}
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className="text-xs font-bold text-foreground truncate">
-                      {msg.authorName}
-                    </span>
-                    {msg.isOwner && (
-                      <Crown className="w-3 h-3 text-amber-400" />
-                    )}
-                    {msg.isModerator && (
-                      <Shield className="w-3 h-3 text-blue-400" />
-                    )}
-                    {msg.isMember && (
-                      <Star className="w-3 h-3 text-green-400" />
-                    )}
-                    {msg.platform === "youtube" && (
-                      <Youtube className="w-3 h-3 text-red-500" />
-                    )}
-                    {msg.superChatAmount && (
-                      <Badge className="h-4 text-[8px] bg-amber-500 text-black px-1.5">
-                        {msg.superChatAmount}
-                      </Badge>
-                    )}
-                  </div>
-
-                  {/* Message text */}
-                  <p className="text-xs text-foreground/80 leading-relaxed break-words">
-                    {msg.message}
-                  </p>
-
-                  {/* Timestamp */}
-                  <span className="text-[9px] text-muted-foreground/50 mt-1 block">
-                    {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                </div>
-
-                {/* Highlight button (visible on hover) */}
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 text-amber-500 hover:text-amber-400 hover:bg-amber-500/10"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleHighlight(msg);
-                        }}
-                      >
-                        <Sparkles className="w-4 h-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="left">
-                      <p className="text-xs">Show on stream</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
+                msg={msg}
+                onHighlight={handleHighlight}
+              />
             ))
           )}
         </div>

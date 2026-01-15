@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, lazy, Suspense, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
@@ -487,7 +487,7 @@ export default function StudioPage() {
         addToast("Guest denied/removed", "info");
     };
 
-    const handleBannerChange = (newBanners: BannerData[], newActiveBanner: BannerData | null) => {
+    const handleBannerChange = useCallback((newBanners: BannerData[], newActiveBanner: BannerData | null) => {
         // Optimistic update
         setBanners(newBanners);
         setActiveBanner(newActiveBanner);
@@ -497,7 +497,29 @@ export default function StudioPage() {
             banners: newBanners,
             activeBanner: newActiveBanner
         });
-    };
+    }, []);
+
+    // Stable callback for destinations changes - prevents re-renders
+    const handleDestinationsChange = useCallback((dests: Array<{
+        id: string;
+        platform: string;
+        name: string;
+        streamKey: string;
+        streamUrl: string;
+        status: string;
+        egressId?: string;
+    }>) => {
+        const activeWithEgress = dests.filter(d => d.egressId);
+        setEnabledDestinations(activeWithEgress.map(d => ({
+            ...d,
+            enabled: d.status === 'live',
+        })));
+    }, []);
+
+    // Stable callback for source changes - prevents re-renders
+    const handleSourcesChange = useCallback((newSources: any[]) => {
+        updateScene(activeSceneId, { sources: newSources });
+    }, [activeSceneId, updateScene]);
 
     if (loading) {
         return (
@@ -662,14 +684,7 @@ export default function StudioPage() {
                                     <DestinationsPanel
                                         roomName={roomId}
                                         isLive={isLive}
-                                        onDestinationsChange={(dests) => {
-                                            // Track destinations with egress IDs for Go Live integration
-                                            const activeWithEgress = dests.filter(d => d.egressId);
-                                            setEnabledDestinations(activeWithEgress.map(d => ({
-                                                ...d,
-                                                enabled: d.status === 'live',
-                                            })));
-                                        }}
+                                        onDestinationsChange={handleDestinationsChange}
                                     />
                                 </TabsContent>
                                 <TabsContent value="chat" forceMount className={`m-0 -mx-5 -mb-5 ${activeTab !== "chat" ? "hidden" : ""}`}>
@@ -760,7 +775,7 @@ export default function StudioPage() {
                                         onDismissHighlight={handleDismissHighlight}
                                         activeLayout={scenes.find(s => s.id === activeSceneId)?.layout || "solo"}
                                         sources={scenes.find(s => s.id === activeSceneId)?.sources || []}
-                                        onSourcesChange={(newSources) => updateScene(activeSceneId, { sources: newSources })}
+                                        onSourcesChange={handleSourcesChange}
                                     />
                                     <RoomAudioRenderer />
                                 </LiveKitRoom>

@@ -14,7 +14,8 @@ import {
   Play,
   Calendar,
   Activity,
-  Signal
+  Signal,
+  Loader2
 } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
 import { useToastStore } from "@/stores/toastStore";
@@ -44,6 +45,7 @@ const MOCK_ROOMS: Room[] = [
 export default function DashboardPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const { addToast } = useToastStore();
 
@@ -106,7 +108,10 @@ export default function DashboardPage() {
   };
 
   const handleCreateRoom = async () => {
+    if (isCreating) return; // Prevent double-clicks
+
     try {
+      setIsCreating(true);
       const response = await apiClient.rooms.create({
         title: "Untitled Broadcast",
         description: "New broadcast session",
@@ -115,6 +120,8 @@ export default function DashboardPage() {
       addToast("Broadcast created", "success");
     } catch (error: any) {
       addToast(`Failed to create broadcast: ${error.message}`, "error");
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -159,12 +166,13 @@ export default function DashboardPage() {
           </h1>
         </div>
         <button
-          className="bg-primary hover:bg-[#ff4d1f] text-black font-bold py-3 px-5 uppercase font-tech tracking-wider flex items-center gap-2 transition-all hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[4px_4px_0_rgba(255,255,255,0.1)] clip-path-slant"
+          className={`bg-primary hover:bg-[#ff4d1f] text-black font-bold py-3 px-5 uppercase font-tech tracking-wider flex items-center gap-2 transition-all hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[4px_4px_0_rgba(255,255,255,0.1)] clip-path-slant ${isCreating ? 'opacity-70 cursor-wait' : ''}`}
           onClick={handleCreateRoom}
+          disabled={isCreating}
           style={{ clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)' }}
         >
-          <Plus size={18} />
-          <span>New Operation</span>
+          {isCreating ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
+          <span>{isCreating ? 'Creating...' : 'New Operation'}</span>
         </button>
       </header>
 
@@ -178,10 +186,12 @@ export default function DashboardPage() {
             No active transmission signals detected. Initialize a new broadcast to begin streaming.
           </p>
           <button
-            className="px-6 py-3 border border-[#333] hover:border-primary text-zinc-400 hover:text-primary font-tech uppercase tracking-wider text-sm transition-all"
+            className={`px-6 py-3 border border-[#333] hover:border-primary text-zinc-400 hover:text-primary font-tech uppercase tracking-wider text-sm transition-all flex items-center gap-2 ${isCreating ? 'opacity-70 cursor-wait' : ''}`}
             onClick={handleCreateRoom}
+            disabled={isCreating}
           >
-            Initialize Broadcast
+            {isCreating && <Loader2 size={14} className="animate-spin" />}
+            {isCreating ? 'Initializing...' : 'Initialize Broadcast'}
           </button>
         </div>
       ) : (
@@ -256,8 +266,8 @@ export default function DashboardPage() {
                   <Link
                     href={`/studio/${room.id}`}
                     className={`flex items-center justify-center gap-2 w-full py-2 px-4 text-xs font-bold uppercase font-tech tracking-wider transition-all border ${room.status === 'draft'
-                        ? 'bg-[#111] border-[#333] text-zinc-300 hover:bg-[#1a1a1a] hover:border-zinc-500'
-                        : 'bg-primary/10 border-primary/30 text-primary hover:bg-primary hover:text-black'
+                      ? 'bg-[#111] border-[#333] text-zinc-300 hover:bg-[#1a1a1a] hover:border-zinc-500'
+                      : 'bg-primary/10 border-primary/30 text-primary hover:bg-primary hover:text-black'
                       }`}
                   >
                     <Play size={12} />

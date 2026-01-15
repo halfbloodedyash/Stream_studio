@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
     Wifi,
     Plus,
@@ -47,6 +47,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { DurationDisplay } from "./DurationDisplay";
 
 interface Destination {
     id: string;
@@ -159,6 +160,9 @@ export function DestinationsPanel({ roomName, isLive, onDestinationsChange }: De
     });
 
     const { addToast } = useToastStore();
+
+    // Track start times for live destinations to avoid re-renders
+    const startTimesRef = useRef<Record<string, number>>({});
 
     // Use ref to avoid re-render loops with callback
     const onDestinationsChangeRef = React.useRef(onDestinationsChange);
@@ -406,29 +410,16 @@ export function DestinationsPanel({ roomName, isLive, onDestinationsChange }: De
         return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
     };
 
-    // Update stats for live destinations
+    // Track start times for live destinations
     useEffect(() => {
-        const interval = setInterval(() => {
-            setDestinations((prev) =>
-                prev.map((d) => {
-                    if (d.status === "live" && d.stats) {
-                        return {
-                            ...d,
-                            stats: {
-                                ...d.stats,
-                                duration: d.stats.duration + 1,
-                                bitrate: 4500 + Math.floor(Math.random() * 200 - 100),
-                                droppedFrames: d.stats.droppedFrames + (Math.random() > 0.95 ? 1 : 0),
-                            },
-                        };
-                    }
-                    return d;
-                })
-            );
-        }, 1000);
-
-        return () => clearInterval(interval);
-    }, []);
+        destinations.forEach(d => {
+            if (d.status === "live" && !startTimesRef.current[d.id]) {
+                startTimesRef.current[d.id] = Date.now();
+            } else if (d.status !== "live") {
+                delete startTimesRef.current[d.id];
+            }
+        });
+    }, [destinations]);
 
     return (
         <div className="flex flex-col gap-6 p-1">
@@ -678,7 +669,12 @@ export function DestinationsPanel({ roomName, isLive, onDestinationsChange }: De
                                         {getStatusBadge(dest.status)}
                                     </div>
                                     <p className="text-[9px] text-muted-foreground/60 font-medium uppercase tracking-tighter mt-1">
-                                        {dest.platform} • {dest.status === "live" ? formatDuration(dest.stats?.duration || 0) : "Ready"}
+                                        {dest.platform} • {dest.status === "live" ? (
+                                            <DurationDisplay
+                                                startTime={startTimesRef.current[dest.id] || Date.now()}
+                                                isActive={dest.status === "live"}
+                                            />
+                                        ) : "Ready"}
                                     </p>
                                 </div>
 
