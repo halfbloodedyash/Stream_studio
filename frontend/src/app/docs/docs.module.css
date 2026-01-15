@@ -1,0 +1,334 @@
+/* ==========================================================================
+   NEO-BROADCAST DOCS THEME
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600&family=Space+Grotesk:wght@400;500;700&family=Syne:wght@700;800&display=swap');
+
+.container {
+    --accent-primary: #FF3300;
+    --text-muted: #808080;
+    --font-display: 'Syne', sans-serif;
+    --font-tech: 'Space Grotesk', monospace;
+    --font-body: 'Manrope', sans-serif;
+
+    min-height: 100vh;
+    background-color: #050505;
+    color: #e0e0e0;
+    font-family: 'Manrope', sans-serif;
+    display: flex;
+    position: relative;
+}
+
+.noise {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+/* --------------------------------------------------------------------------
+   Sidebar Navigation
+   -------------------------------------------------------------------------- */
+.sidebar {
+    width: 280px;
+    min-width: 280px;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    border-right: 1px solid #222;
+    background: #0a0a0a;
+    display: flex;
+    flex-direction: column;
+    padding: 2rem;
+    overflow-y: auto;
+    flex-shrink: 0;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 3rem;
+    text-decoration: none;
+    color: white;
+}
+
+.liveBug {
+    width: 10px;
+    height: 10px;
+    background-color: #FF3300;
+    border-radius: 50%;
+    animation: blink 2s infinite;
+}
+
+@keyframes blink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.logoText {
+    font-family: 'Space Grotesk', monospace;
+    font-weight: 700;
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.navGroup {
+    margin-bottom: 2rem;
+}
+
+.navTitle {
+    font-family: 'Space Grotesk', monospace;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    color: #808080;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.75rem;
+}
+
+.navLink {
+    display: block;
+    font-size: 0.9rem;
+    color: #888;
+    text-decoration: none;
+    padding: 0.5rem 0;
+    transition: all 0.2s;
+    border-left: 2px solid transparent;
+    padding-left: 1rem;
+    margin-left: -1rem;
+    cursor: pointer;
+}
+
+.navLink:hover {
+    color: white;
+    border-left-color: #333;
+}
+
+.active {
+    color: #FF3300 !important;
+    border-left-color: #FF3300 !important;
+    background: linear-gradient(90deg, rgba(255, 51, 0, 0.05), transparent);
+}
+
+/* --------------------------------------------------------------------------
+   Main Content
+   -------------------------------------------------------------------------- */
+.main {
+    flex: 1;
+    padding: 4rem 6rem;
+    max-width: 900px;
+    overflow-y: auto;
+}
+
+.hero {
+    margin-bottom: 4rem;
+    border-bottom: 1px solid #222;
+    padding-bottom: 3rem;
+}
+
+.eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #FF3300;
+    font-family: 'Space Grotesk', monospace;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+}
+
+.hero h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 3.5rem;
+    font-weight: 800;
+    margin-bottom: 1.5rem;
+    line-height: 1.1;
+    color: white;
+    text-transform: uppercase;
+}
+
+.lead {
+    font-size: 1.2rem;
+    color: #a0a0a0;
+    line-height: 1.6;
+}
+
+/* Sections */
+.section {
+    margin-bottom: 4rem;
+    scroll-margin-top: 4rem;
+}
+
+.section h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #222;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: white;
+    text-transform: uppercase;
+}
+
+.section h3 {
+    font-family: 'Space Grotesk', monospace;
+    font-size: 1.1rem;
+    color: white;
+    margin: 2rem 0 0.75rem;
+    font-weight: 600;
+}
+
+.section h4 {
+    font-family: 'Space Grotesk', monospace;
+    font-size: 0.95rem;
+    color: #FF3300;
+    margin: 1.5rem 0 0.5rem;
+    font-weight: 600;
+}
+
+.section p {
+    color: #b0b0b0;
+    line-height: 1.7;
+    margin-bottom: 1rem;
+}
+
+.section ul,
+.section ol {
+    list-style: none;
+    padding: 0;
+    margin-bottom: 1.5rem;
+}
+
+.section li {
+    position: relative;
+    padding-left: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: #c0c0c0;
+    line-height: 1.5;
+}
+
+.section li::before {
+    content: "»";
+    position: absolute;
+    left: 0;
+    color: #FF3300;
+}
+
+.section ol li {
+    counter-increment: step;
+}
+
+.section ol li::before {
+    content: counter(step) ".";
+    color: #FF3300;
+    font-weight: bold;
+}
+
+/* Code Blocks */
+.codeBlock {
+    background: #0f0f0f;
+    border: 1px solid #222;
+    border-radius: 6px;
+    padding: 1.25rem;
+    font-family: 'Space Grotesk', monospace;
+    font-size: 0.85rem;
+    color: #e0e0e0;
+    overflow-x: auto;
+    margin: 1rem 0 1.5rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.codeBlock code {
+    color: #a5d6ff;
+}
+
+.inlineCode {
+    background: #1a1a1a;
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    font-family: 'Space Grotesk', monospace;
+    font-size: 0.85em;
+    color: #FF3300;
+    border: 1px solid #333;
+}
+
+/* Feature Grid */
+.featureGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+}
+
+.featureCard {
+    background: #0a0a0a;
+    border: 1px solid #222;
+    padding: 1.25rem;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.featureCard:hover {
+    border-color: #444;
+    transform: translateY(-2px);
+}
+
+.featureIcon {
+    color: #FF3300;
+    margin-bottom: 0.75rem;
+}
+
+.featureTitle {
+    font-family: 'Space Grotesk', monospace;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: white;
+    margin-bottom: 0.4rem;
+}
+
+.featureDesc {
+    font-size: 0.85rem;
+    color: #888;
+    line-height: 1.5;
+}
+
+/* Mobile */
+@media (max-width: 900px) {
+    .container {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+        border-right: none;
+        border-bottom: 1px solid #222;
+        padding: 1.5rem;
+    }
+
+    .main {
+        padding: 2rem 1.5rem;
+    }
+
+    .hero h1 {
+        font-size: 2.5rem;
+    }
+
+    .section h2 {
+        font-size: 1.5rem;
+    }
+}

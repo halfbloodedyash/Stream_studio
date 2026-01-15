@@ -91,9 +91,9 @@ export default function Home() {
             <button className={styles.primaryBtn} onClick={handleCreateStudio}>
               Initialize Studio
             </button>
-            <button className={styles.secondaryBtn}>
+            <Link href="/docs" className={styles.secondaryBtn}>
               Read Docs
-            </button>
+            </Link>
           </div>
         </section>
 
@@ -141,6 +141,16 @@ export default function Home() {
                   <Monitor size={64} className={styles.placeholderIcon} />
                   <div className={styles.overlay}>
                     MAIN FEED
+                  </div>
+                  {/* Audio Visualization Bars */}
+                  <div className={styles.audioBars}>
+                    {[...Array(5)].map((_, i) => (
+                      <div
+                        key={i}
+                        className={styles.audioBar}
+                        style={{ animationDelay: `${i * 0.1}s` }}
+                      />
+                    ))}
                   </div>
                 </div>
                 <div className={styles.guestSide}>
@@ -311,7 +321,7 @@ export default function Home() {
             </div>
             <div className={styles.footerColumn}>
               <h4>Resources</h4>
-              <a href="#">Documentation</a>
+              <Link href="/docs">Documentation</Link>
               <a href="#">API Reference</a>
               <a href="#">Status Page</a>
               <a href="#">Support</a>
