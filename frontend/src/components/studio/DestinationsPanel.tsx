@@ -237,7 +237,7 @@ export function DestinationsPanel({ roomName, isLive, onDestinationsChange }: De
 
     const removeDestination = (id: string) => {
         setDestinations(destinations.filter((d) => d.id !== id));
-        addToast("Destination removed", "info");
+        addToast("Platform removed", "info");
     };
 
     const toggleDestinationStatus = async (id: string) => {
@@ -435,7 +435,7 @@ export function DestinationsPanel({ roomName, isLive, onDestinationsChange }: De
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground/80">
                     <Wifi className="w-4 h-4 text-primary" />
-                    <span>Destinations</span>
+                    <span>Platforms</span>
                     {destinations.filter((d) => d.status === "live").length > 0 && (
                         <Badge className="bg-destructive text-white text-[9px] px-1.5 py-0 h-4">
                             {destinations.filter((d) => d.status === "live").length} LIVE
@@ -452,7 +452,7 @@ export function DestinationsPanel({ roomName, isLive, onDestinationsChange }: De
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-lg">
                         <DialogHeader>
-                            <DialogTitle>Add Streaming Destination</DialogTitle>
+                            <DialogTitle>Add Streaming Platform</DialogTitle>
                             <DialogDescription>
                                 Connect to YouTube, Twitch, Facebook, LinkedIn, or a custom RTMP server.
                             </DialogDescription>
@@ -639,14 +639,14 @@ export function DestinationsPanel({ roomName, isLive, onDestinationsChange }: De
                         <Wifi className="w-8 h-8 text-muted-foreground/20" />
                     </div>
                     <div className="space-y-1">
-                        <h4 className="text-sm font-bold tracking-tight">No Destinations</h4>
+                        <h4 className="text-sm font-bold tracking-tight">No Platforms Added</h4>
                         <p className="text-[11px] text-muted-foreground/60 max-w-[200px] leading-relaxed mx-auto">
                             Simulcast to YouTube, Twitch, Facebook, LinkedIn, or custom RTMP servers.
                         </p>
                     </div>
                     <Button variant="secondary" onClick={() => setIsAddOpen(true)} className="rounded-xl px-6 h-9 font-bold gap-2 text-xs">
                         <Plus className="w-3.5 h-3.5" />
-                        Add Destination
+                        Add Platform
                     </Button>
                 </div>
             ) : (
@@ -808,7 +808,7 @@ export function DestinationsPanel({ roomName, isLive, onDestinationsChange }: De
                     {/* Quick Stats Summary */}
                     <div className="mt-4 p-3 bg-secondary/10 rounded-xl border border-border/20">
                         <div className="flex items-center justify-between text-[10px]">
-                            <span className="text-muted-foreground uppercase tracking-wider font-medium">Total Destinations</span>
+                            <span className="text-muted-foreground uppercase tracking-wider font-medium">Total Platforms</span>
                             <span className="font-bold">{destinations.length}</span>
                         </div>
                         <div className="flex items-center justify-between text-[10px] mt-1.5">

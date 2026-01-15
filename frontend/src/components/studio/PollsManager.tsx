@@ -42,7 +42,7 @@ export function PollsManager() {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground/80">
                     <BarChart2 className="w-4 h-4 text-primary" />
-                    <span>Live Polls</span>
+                    <span>Polls</span>
                 </div>
                 <Button
                     variant={isCreating ? "ghost" : "outline"}

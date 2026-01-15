@@ -70,7 +70,7 @@ export function BrandSettings() {
             <section className="space-y-4">
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground/80">
                     <Palette className="w-4 h-4 text-primary" />
-                    <span>Brand Color</span>
+                    <span>Colors</span>
                 </div>
                 <div className="grid grid-cols-5 gap-3">
                     {colors.map((color) => (
@@ -109,7 +109,7 @@ export function BrandSettings() {
             <section className="space-y-4">
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground/80">
                     <Type className="w-4 h-4 text-primary" />
-                    <span>Typography</span>
+                    <span>Fonts</span>
                 </div>
                 <Select onValueChange={setFontFamily} defaultValue="Inter">
                     <SelectTrigger className="w-full rounded-xl bg-secondary/30 border-border/60">
@@ -131,7 +131,7 @@ export function BrandSettings() {
                 <div className="space-y-4">
                     <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground/80">
                         <Upload className="w-4 h-4 text-primary" />
-                        <span>Brand Assets</span>
+                        <span>Logo & Background</span>
                     </div>
 
                     <div className="grid grid-cols-1 gap-4">
@@ -210,7 +210,7 @@ export function BrandSettings() {
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground/80">
                         <Video className="w-4 h-4 text-primary" />
-                        <span>Video Clips</span>
+                        <span>Media Clips</span>
                     </div>
                     <Button
                         variant="ghost"

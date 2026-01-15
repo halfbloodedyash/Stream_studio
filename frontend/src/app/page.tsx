@@ -273,7 +273,7 @@ export default function Home() {
             />
             <FaqItem
               question="Can I simulcast to multiple targets?"
-              answer="Yes! With Director and Executive clearance levels, you can simulcast your stream to multiple RTMP destinations simultaneously—YouTube, Twitch, LinkedIn, and custom endpoints. Configure your destinations once and go live everywhere with a single click."
+              answer="Yes! With Director and Executive clearance levels, you can simulcast your stream to multiple platforms simultaneously—YouTube, Twitch, LinkedIn, and custom endpoints. Configure your platforms once and go live everywhere with a single click."
             />
             <FaqItem
               question="What video quality is supported?"

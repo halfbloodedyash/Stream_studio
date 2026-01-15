@@ -468,7 +468,7 @@ export default function StudioPage() {
                 // Note: Destinations are started manually from the Destinations panel
                 // This is intentional - users may want to go live in the studio
                 // before starting RTMP output to platforms
-                addToast("Go to Destinations tab to start streaming to platforms", "info");
+                addToast("Go to Platforms tab to start streaming", "info");
             } catch (error: any) {
                 addToast(`Failed to go live: ${error.message}`, "error");
             }

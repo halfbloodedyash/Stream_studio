@@ -52,7 +52,7 @@ export function BannersManager({ banners, activeBanner, onUpdate }: BannersManag
         <div className="flex flex-col gap-6">
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground/80">
                 <Type className="w-4 h-4 text-primary" />
-                <span>Banners & Tickers</span>
+                <span>Text Overlays</span>
             </div>
 
             <Card className="p-4 bg-secondary/20 border-border/60 shadow-xl space-y-4">

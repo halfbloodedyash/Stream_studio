@@ -85,7 +85,7 @@ export function SceneManager({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Active Scenes</h3>
+        <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Layouts</h3>
         <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={onAddScene}>
           <Plus className="w-4 h-4" />
         </Button>
@@ -158,7 +158,7 @@ export function SceneManager({
                   className="absolute inset-2 grid gap-1.5"
                   style={{
                     gridTemplateColumns: `repeat(${scene.layout === "solo" ? 1 :
-                        scene.layout === "duo" ? 2 : 2
+                      scene.layout === "duo" ? 2 : 2
                       }, 1fr)`,
                     gridTemplateRows: `repeat(${scene.layout === "solo" || scene.layout === "duo" ? 1 : 2
                       }, 1fr)`,
@@ -213,7 +213,7 @@ export function SceneManager({
 
       <Button variant="outline" className="mt-2 border-dashed border-border/60 rounded-xl py-6 gap-2 text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-all" onClick={onAddScene}>
         <Plus className="w-4 h-4" />
-        Add New Scene
+        Add Layout
       </Button>
     </div>
   );
